@@ -133,8 +133,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let hostingController = NSHostingController(rootView: settingsView)
             settingsWindow = NSWindow(contentViewController: hostingController)
             settingsWindow?.title = "FlowClip Settings"
-            settingsWindow?.styleMask = [.titled, .closable]
-            settingsWindow?.setContentSize(NSSize(width: 420, height: 320))
+            settingsWindow?.styleMask = [.titled, .closable, .resizable]
+            settingsWindow?.setContentSize(NSSize(width: 400, height: 460))
+            settingsWindow?.minSize = NSSize(width: 360, height: 420)
             settingsWindow?.isReleasedWhenClosed = false
         }
         settingsWindow?.center()

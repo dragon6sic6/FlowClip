@@ -5,13 +5,19 @@ struct SettingsView: View {
     @State private var selectedDuration: DurationOption = .thirtyMinutes
     @State private var customMinutes: Int = 30
 
-    enum DurationOption: String, CaseIterable {
-        case fifteenMinutes = "15 minutes"
-        case thirtyMinutes = "30 minutes"
-        case oneHour = "1 hour"
-        case twoHours = "2 hours"
-        case untilQuit = "Until quit"
-        case custom = "Custom"
+    enum DurationOption: CaseIterable {
+        case fifteenMinutes, thirtyMinutes, oneHour, twoHours, untilQuit, custom
+
+        var label: String {
+            switch self {
+            case .fifteenMinutes: return "15 min"
+            case .thirtyMinutes: return "30 min"
+            case .oneHour: return "1 hour"
+            case .twoHours: return "2 hours"
+            case .untilQuit: return "Forever"
+            case .custom: return "Custom"
+            }
+        }
 
         var seconds: TimeInterval {
             switch self {
@@ -28,113 +34,115 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            HStack {
+            VStack(spacing: 6) {
                 Image(systemName: "doc.on.clipboard.fill")
-                    .font(.system(size: 20))
+                    .font(.system(size: 28))
                     .foregroundColor(.accentColor)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("FlowClip")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("Clipboard Manager")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
+
+                Text("FlowClip")
+                    .font(.system(size: 18, weight: .bold))
+
+                Text("Clipboard Manager")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
             }
-            .padding(20)
-            .background(.quaternary.opacity(0.5))
+            .frame(maxWidth: .infinity)
+            .padding(.top, 24)
+            .padding(.bottom, 20)
 
-            Divider()
+            // Content
+            ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 12) {
 
-            // Settings content
-            Form {
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("Session Duration", systemImage: "timer")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.primary)
+                // Session Duration card
+                settingsCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        cardHeader(icon: "timer", title: "Session Duration")
 
-                        Text("Clipboard history clears automatically after this time.")
-                            .font(.system(size: 12))
+                        Text("History clears automatically after this time.")
+                            .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
 
-                        Picker("Duration", selection: $selectedDuration) {
+                        // Duration grid — 3 columns, equal width
+                        let columns = [
+                            GridItem(.flexible(), spacing: 6),
+                            GridItem(.flexible(), spacing: 6),
+                            GridItem(.flexible(), spacing: 6)
+                        ]
+                        LazyVGrid(columns: columns, spacing: 6) {
                             ForEach(DurationOption.allCases, id: \.self) { option in
-                                Text(option.rawValue).tag(option)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: selectedDuration) { newValue in
-                            if newValue != .custom {
-                                manager.updateSessionDuration(newValue.seconds)
+                                durationButton(option)
                             }
                         }
 
+                        // Custom stepper
                         if selectedDuration == .custom {
-                            HStack {
-                                Stepper(
-                                    value: $customMinutes,
-                                    in: 1...480,
-                                    step: 5
-                                ) {
-                                    Text("\(customMinutes) minutes")
-                                        .font(.system(size: 13))
-                                }
-                                .onChange(of: customMinutes) { val in
-                                    manager.updateSessionDuration(TimeInterval(val * 60))
-                                }
-                            }
+                            customStepper()
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
                 }
-                .padding(.vertical, 8)
 
-                Divider().padding(.vertical, 4)
-
-                Section {
+                // Keyboard Shortcuts card
+                settingsCard {
                     VStack(alignment: .leading, spacing: 12) {
-                        Label("Usage", systemImage: "keyboard")
-                            .font(.system(size: 13, weight: .semibold))
+                        cardHeader(icon: "keyboard", title: "Shortcuts")
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            shortcutRow(icon: "doc.on.doc", text: "Copy", shortcut: "⌘C")
-                            shortcutRow(icon: "list.clipboard", text: "Hold to show picker", shortcut: "⌘V hold")
-                            shortcutRow(icon: "arrow.up.doc", text: "Paste selected", shortcut: "Click item")
-                            shortcutRow(icon: "xmark.circle", text: "Delete item", shortcut: "Hover → ✕")
+                        VStack(spacing: 8) {
+                            shortcutRow(icon: "doc.on.doc", text: "Copy anything", shortcut: "⌘C")
+                            shortcutRow(icon: "list.clipboard", text: "Show picker", shortcut: "Hold ⌘V")
+                            shortcutRow(icon: "arrow.up.doc", text: "Paste item", shortcut: "Click")
+                            shortcutRow(icon: "escape", text: "Dismiss", shortcut: "Esc")
                         }
                     }
                 }
-                .padding(.vertical, 8)
 
-                Divider().padding(.vertical, 4)
-
-                Section {
+                // Memory card
+                settingsCard {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Items in memory")
-                                .font(.system(size: 13))
-                            Text("\(manager.items.count) clipboard item\(manager.items.count == 1 ? "" : "s")")
-                                .font(.system(size: 12))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Items in Memory")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s")")
+                                .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                         }
+
                         Spacer()
-                        Button("Clear Now") {
-                            manager.clearAll()
+
+                        Button(action: { manager.clearAll() }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 10))
+                                Text("Clear All")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.red.opacity(0.1))
+                            )
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .tint(.red.opacity(0.8))
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.vertical, 8)
             }
-            .formStyle(.grouped)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+            }
+
+            Spacer(minLength: 8)
+
+            Text("v1.0.0")
+                .font(.system(size: 10))
+                .foregroundStyle(.quaternary)
+                .padding(.bottom, 10)
         }
-        .frame(width: 420, height: 360)
+        .frame(minWidth: 360, minHeight: 420)
+        .background(Color(.windowBackgroundColor))
         .onAppear {
-            // Sync picker to current setting
             let current = manager.sessionDuration
             if let match = DurationOption.allCases.first(where: { $0.seconds == current && $0 != .custom }) {
                 selectedDuration = match
@@ -147,23 +155,132 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Card Header
+
+    @ViewBuilder
+    func cardHeader(icon: String, title: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.accentColor)
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+        }
+    }
+
+    // MARK: - Duration Button
+
+    @ViewBuilder
+    func durationButton(_ option: DurationOption) -> some View {
+        let isSelected = selectedDuration == option
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedDuration = option
+            }
+            if option != .custom {
+                manager.updateSessionDuration(option.seconds)
+            }
+        }) {
+            Text(option.label)
+                .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? .white : .secondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(isSelected ? Color.accentColor : Color.primary.opacity(0.06))
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Custom Stepper
+
+    @ViewBuilder
+    func customStepper() -> some View {
+        HStack(spacing: 8) {
+            Text("Duration:")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 0) {
+                Button(action: {
+                    if customMinutes > 5 { customMinutes -= 5 }
+                    manager.updateSessionDuration(TimeInterval(customMinutes * 60))
+                }) {
+                    Image(systemName: "minus")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+
+                Text("\(customMinutes) min")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .frame(width: 56)
+
+                Button(action: {
+                    if customMinutes < 480 { customMinutes += 5 }
+                    manager.updateSessionDuration(TimeInterval(customMinutes * 60))
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+            )
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Settings Card
+
+    @ViewBuilder
+    func settingsCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+    }
+
+    // MARK: - Shortcut Row
+
     @ViewBuilder
     func shortcutRow(icon: String, text: String, shortcut: String) -> some View {
-        HStack {
+        HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-                .frame(width: 18)
+                .frame(width: 16, alignment: .center)
+
             Text(text)
                 .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary.opacity(0.75))
+
             Spacer()
+
             Text(shortcut)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.primary.opacity(0.06))
+                )
         }
     }
 }
