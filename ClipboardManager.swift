@@ -84,6 +84,8 @@ class ClipboardManager: ObservableObject {
     func paste(item: ClipboardItem) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(item.content, forType: .string)
+        // Update changeCount so the poll doesn't re-add this item
+        lastChangeCount = NSPasteboard.general.changeCount
     }
 
     func remove(item: ClipboardItem) {

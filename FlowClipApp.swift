@@ -19,6 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var keyMonitor: KeyboardMonitor!
     var popoverWindow: PickerWindow?
     var settingsWindow: NSWindow?
+    private var historyItems: [NSMenuItem] = []
     private var accessibilityCheckTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -111,8 +112,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(countItem)
 
         menu.addItem(NSMenuItem.separator())
+
+        // History submenu
+        let historyItem = NSMenuItem(title: "History", action: nil, keyEquivalent: "")
+        let historySubmenu = NSMenu()
+        let items = ClipboardManager.shared.items
+        if items.isEmpty {
+            let emptyItem = NSMenuItem(title: "No items yet", action: nil, keyEquivalent: "")
+            emptyItem.isEnabled = false
+            historySubmenu.addItem(emptyItem)
+        } else {
+            for (index, item) in items.enumerated() {
+                let preview = String(item.preview.prefix(60))
+                    .replacingOccurrences(of: "\n", with: " ")
+                let menuEntry = NSMenuItem(
+                    title: preview,
+                    action: #selector(historyItemClicked(_:)),
+                    keyEquivalent: index < 9 ? "\(index + 1)" : ""
+                )
+                menuEntry.target = self
+                menuEntry.tag = index
+                if let source = item.sourceApp {
+                    menuEntry.toolTip = "\(source) · \(item.content.prefix(200))"
+                }
+                historySubmenu.addItem(menuEntry)
+            }
+            historySubmenu.addItem(NSMenuItem.separator())
+            let clearItem = NSMenuItem(title: "Clear All", action: #selector(clearHistory), keyEquivalent: "")
+            clearItem.target = self
+            historySubmenu.addItem(clearItem)
+        }
+        historyItem.submenu = historySubmenu
+        menu.addItem(historyItem)
+
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: "Clear History", action: #selector(clearHistory), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit FlowClip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
@@ -141,6 +174,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow?.center()
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc func historyItemClicked(_ sender: NSMenuItem) {
+        let index = sender.tag
+        let items = ClipboardManager.shared.items
+        guard index >= 0, index < items.count else { return }
+        ClipboardManager.shared.paste(item: items[index])
     }
 
     @objc func clearHistory() {
