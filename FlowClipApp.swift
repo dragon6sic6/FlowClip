@@ -20,15 +20,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var popoverWindow: PickerWindow?
     var settingsWindow: NSWindow?
     var aboutWindow: NSWindow?
+    var welcomeWindow: NSWindow?
     private var historyItems: [NSMenuItem] = []
     private var accessibilityCheckTimer: Timer?
+
+    private var hasCompletedOnboarding: Bool {
+        get { UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") }
+        set { UserDefaults.standard.set(newValue, forKey: "hasCompletedOnboarding") }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
         clipboardManager = ClipboardManager.shared
         setupMenuBar()
-        checkAccessibilityAndStart()
+
+        if !hasCompletedOnboarding {
+            showWelcome()
+        } else {
+            checkAccessibilityAndStart()
+        }
     }
 
     // MARK: - Accessibility
@@ -194,6 +205,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         aboutWindow?.center()
         aboutWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // MARK: - Welcome / Onboarding
+
+    func showWelcome() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+
+        let welcomeView = WelcomeView {
+            self.hasCompletedOnboarding = true
+            self.welcomeWindow?.close()
+            self.welcomeWindow = nil
+            NSApp.setActivationPolicy(.accessory)
+            self.checkAccessibilityAndStart()
+        }
+        let hostingController = NSHostingController(rootView: welcomeView)
+        welcomeWindow = NSWindow(contentViewController: hostingController)
+        welcomeWindow?.title = "Welcome to FlowClip"
+        welcomeWindow?.styleMask = [.titled, .closable]
+        welcomeWindow?.setContentSize(NSSize(width: 400, height: 520))
+        welcomeWindow?.isReleasedWhenClosed = false
+        welcomeWindow?.center()
+        welcomeWindow?.makeKeyAndOrderFront(nil)
     }
 
     @objc func historyItemClicked(_ sender: NSMenuItem) {
