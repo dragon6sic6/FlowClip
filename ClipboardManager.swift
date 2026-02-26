@@ -1,6 +1,24 @@
 import AppKit
 import Combine
 
+// MARK: - Pinned Favorites (persistent across sessions)
+
+struct PinnedSnippet: Identifiable, Codable, Equatable {
+    let id: UUID
+    var title: String
+    var content: String
+    let createdAt: Date
+
+    init(content: String) {
+        self.id = UUID()
+        self.title = String(content.prefix(50)).trimmingCharacters(in: .whitespacesAndNewlines)
+        self.content = content
+        self.createdAt = Date()
+    }
+}
+
+// MARK: - Clipboard Item
+
 struct ClipboardItem: Identifiable, Equatable {
     let id: UUID
     let content: String
@@ -54,6 +72,7 @@ class ClipboardManager: ObservableObject {
     static let shared = ClipboardManager()
 
     @Published var items: [ClipboardItem] = []
+    @Published var pinnedItems: [PinnedSnippet] = []
     @Published var sessionDuration: TimeInterval = 1800 // 30 minutes default
     @Published var maxRemember: Int = 50
     @Published var displayInMenu: Int = 20
@@ -66,6 +85,7 @@ class ClipboardManager: ObservableObject {
 
     private init() {
         loadSettings()
+        loadPinnedItems()
         startPolling()
         startSessionTimer()
     }
@@ -203,5 +223,34 @@ class ClipboardManager: ObservableObject {
         sessionDuration = duration
         saveSettings()
         startSessionTimer()
+    }
+
+    // MARK: - Pinned Favorites
+
+    func loadPinnedItems() {
+        guard let data = UserDefaults.standard.data(forKey: "pinnedItems"),
+              let items = try? JSONDecoder().decode([PinnedSnippet].self, from: data) else { return }
+        pinnedItems = items
+    }
+
+    func savePinnedItems() {
+        guard let data = try? JSONEncoder().encode(pinnedItems) else { return }
+        UserDefaults.standard.set(data, forKey: "pinnedItems")
+    }
+
+    func pinItem(content: String) {
+        guard !pinnedItems.contains(where: { $0.content == content }) else { return }
+        let snippet = PinnedSnippet(content: content)
+        pinnedItems.insert(snippet, at: 0)
+        savePinnedItems()
+    }
+
+    func unpinItem(_ snippet: PinnedSnippet) {
+        pinnedItems.removeAll { $0.id == snippet.id }
+        savePinnedItems()
+    }
+
+    func isPinned(content: String) -> Bool {
+        pinnedItems.contains { $0.content == content }
     }
 }

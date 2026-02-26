@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - Keyboard Navigation State
 
@@ -16,6 +17,7 @@ struct PickerView: View {
     @State private var hoveredId: UUID? = nil
     @State private var appeared = false
     @State private var searchText = ""
+    @State private var showSearch = false
 
     var filteredItems: [ClipboardItem] {
         if searchText.isEmpty { return manager.items }
@@ -52,6 +54,20 @@ struct PickerView: View {
                     // Session timer badge
                     SessionTimerBadge()
 
+                    // Search toggle button
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showSearch.toggle()
+                            if !showSearch { searchText = "" }
+                        }
+                    }) {
+                        Image(systemName: showSearch ? "magnifyingglass.circle.fill" : "magnifyingglass.circle")
+                            .font(.system(size: 16))
+                            .foregroundColor(showSearch ? .accentColor : .secondary)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+
                     // Clear all button
                     Button(action: {
                         withAnimation(.spring(response: 0.3)) {
@@ -81,8 +97,8 @@ struct PickerView: View {
                 .padding(.top, 14)
                 .padding(.bottom, 10)
 
-                // Search bar
-                if manager.items.count > 3 {
+                // Search bar (toggled)
+                if showSearch {
                     HStack(spacing: 6) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 12))
@@ -96,6 +112,7 @@ struct PickerView: View {
                     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
                 Divider()
@@ -105,15 +122,60 @@ struct PickerView: View {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
                         LazyVStack(spacing: 4) {
+                            // Pinned favorites section
+                            if !manager.pinnedItems.isEmpty && searchText.isEmpty {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "pin.fill")
+                                        .font(.system(size: 9))
+                                        .rotationEffect(.degrees(45))
+                                    Text("Favorites")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 14)
+                                .padding(.top, 2)
+
+                                ForEach(manager.pinnedItems) { snippet in
+                                    PinnedItemRow(
+                                        snippet: snippet,
+                                        onSelect: {
+                                            onSelect(ClipboardItem(content: snippet.content))
+                                        },
+                                        onUnpin: {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                                manager.unpinItem(snippet)
+                                            }
+                                        }
+                                    )
+                                }
+
+                                Divider().opacity(0.3)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 2)
+                            }
+
                             ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
                                 ClipboardItemRow(
                                     item: item,
                                     index: index,
                                     isHighlighted: hoveredId == item.id || (navState.selectedIndex == index && hoveredId == nil),
+                                    isPinned: !item.isImage && manager.isPinned(content: item.content),
                                     onSelect: { onSelect(item) },
                                     onDelete: {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                             manager.remove(item: item)
+                                        }
+                                    },
+                                    onPin: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            if manager.isPinned(content: item.content) {
+                                                if let pin = manager.pinnedItems.first(where: { $0.content == item.content }) {
+                                                    manager.unpinItem(pin)
+                                                }
+                                            } else {
+                                                manager.pinItem(content: item.content)
+                                            }
                                         }
                                     }
                                 )
@@ -203,8 +265,10 @@ struct ClipboardItemRow: View {
     let item: ClipboardItem
     let index: Int
     let isHighlighted: Bool
+    let isPinned: Bool
     var onSelect: () -> Void
     var onDelete: () -> Void
+    var onPin: () -> Void
 
     @State private var showDelete = false
 
@@ -213,16 +277,16 @@ struct ClipboardItemRow: View {
             // Index badge
             ZStack {
                 Circle()
-                    .fill(index == 0 ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.1))
+                    .fill(index == 0 ? Color.accentColor.opacity(0.18) : Color.white.opacity(0.1))
                     .frame(width: 26, height: 26)
                 if item.isImage {
                     Image(systemName: "photo")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(index == 0 ? Color.accentColor : .secondary)
+                        .foregroundColor(index == 0 ? .accentColor : .white.opacity(0.8))
                 } else {
                     Text(index < 9 ? "\(index + 1)" : "\u{2022}")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(index == 0 ? Color.accentColor : .secondary)
+                        .foregroundColor(index == 0 ? .accentColor : .white.opacity(0.8))
                 }
             }
 
@@ -263,6 +327,7 @@ struct ClipboardItemRow: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .foregroundColor(.white.opacity(isHighlighted ? 1.0 : 0.9))
+                        .help(item.content.count > 80 ? String(item.content.prefix(500)) : "")
 
                     if let source = item.sourceApp {
                         Text(source)
@@ -276,18 +341,29 @@ struct ClipboardItemRow: View {
 
             // Hover action icons
             if isHighlighted {
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
+                    // Pin / Unpin (text items only)
+                    if !item.isImage {
+                        Image(systemName: isPinned ? "pin.slash.fill" : "pin.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(isPinned ? .accentColor : .secondary)
+                            .rotationEffect(.degrees(45))
+                            .frame(width: 26, height: 26)
+                            .contentShape(Rectangle())
+                            .highPriorityGesture(TapGesture().onEnded { onPin() })
+                    }
+
                     Image(systemName: "doc.on.doc")
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 26, height: 26)
                         .contentShape(Rectangle())
                         .highPriorityGesture(TapGesture().onEnded { onSelect() })
 
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16))
                         .foregroundStyle(.tertiary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 26, height: 26)
                         .contentShape(Rectangle())
                         .highPriorityGesture(TapGesture().onEnded { onDelete() })
                 }
@@ -315,9 +391,66 @@ struct ClipboardItemRow: View {
         )
         .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .onTapGesture { onSelect() }
+        .onDrag {
+            if item.isImage, let image = item.image, let tiffData = image.tiffRepresentation {
+                return NSItemProvider(item: tiffData as NSData, typeIdentifier: UTType.tiff.identifier)
+            }
+            return NSItemProvider(object: item.content as NSString)
+        }
     }
 }
 
+
+// MARK: - Pinned Item Row
+
+struct PinnedItemRow: View {
+    let snippet: PinnedSnippet
+    var onSelect: () -> Void
+    var onUnpin: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "pin.fill")
+                .font(.system(size: 10))
+                .foregroundColor(.accentColor)
+                .rotationEffect(.degrees(45))
+
+            Text(snippet.title)
+                .font(.system(size: 12))
+                .lineLimit(1)
+                .foregroundColor(.white.opacity(0.85))
+                .help(snippet.content.count > 50 ? String(snippet.content.prefix(500)) : "")
+
+            Spacer()
+
+            if isHovered {
+                Button(action: onUnpin) {
+                    Image(systemName: "pin.slash.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isHovered ? Color.accentColor.opacity(0.1) : Color.clear)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .onHover { isHovered = $0 }
+        .onTapGesture { onSelect() }
+        .onDrag {
+            NSItemProvider(object: snippet.content as NSString)
+        }
+    }
+}
+
+// MARK: - Session Timer Badge
 
 struct SessionTimerBadge: View {
     @ObservedObject private var manager = ClipboardManager.shared

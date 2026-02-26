@@ -1,11 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Borderless window that can become key and suppresses system beep.
+/// Borderless window that can become key and suppresses all beeps.
 private class KeyableWindow: NSWindow {
     override var canBecomeKey: Bool { true }
-    override func noResponder(for eventSelector: Selector) {
-        // Suppress NSBeep when responder chain doesn't handle an event
+    override func noResponder(for eventSelector: Selector) {}
+    override func keyDown(with event: NSEvent) {
+        // Swallow all key events to prevent system beep.
+        // Actual handling is done via the local NSEvent monitor.
     }
 }
 
@@ -88,6 +90,7 @@ class PickerWindow: NSObject {
 
         window?.alphaValue = 0
         window?.makeKeyAndOrderFront(nil)
+        window?.makeFirstResponder(nil) // Prevent search field auto-focus
         NSApp.activate(ignoringOtherApps: true)
 
         NSAnimationContext.runAnimationGroup({ ctx in
@@ -105,33 +108,47 @@ class PickerWindow: NSObject {
             }
         }
 
-        // Local key monitor for keyboard navigation
-        keyMonitorLocal = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            return self?.handleLocalKey(event) ?? event
+        // Local key monitor for keyboard navigation — swallow ALL key events
+        // to prevent the system beep. Only pass through if a text field has focus.
+        keyMonitorLocal = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            guard let self else { return nil }
+
+            // If a text field has focus (search), let events through
+            if let responder = self.window?.firstResponder, responder is NSTextView {
+                if event.type == .keyDown && event.keyCode == 53 { // Escape still dismisses
+                    self.dismiss()
+                    return nil
+                }
+                return event
+            }
+
+            // Handle key actions, then swallow the event
+            if event.type == .keyDown {
+                self.handleLocalKey(event)
+            }
+            return nil
         }
     }
 
-    private func handleLocalKey(_ event: NSEvent) -> NSEvent? {
-        let isSearchFocused = window?.firstResponder is NSTextView
+    private func handleLocalKey(_ event: NSEvent) {
         let itemCount = ClipboardManager.shared.items.count
 
         switch event.keyCode {
+        case 53: // Escape
+            // Async so monitor returns nil before monitor is removed
+            DispatchQueue.main.async { [weak self] in self?.dismiss() }
         case 126: // Arrow Up
             navState.selectedIndex = max(0, navState.selectedIndex - 1)
-            return nil
         case 125: // Arrow Down
             navState.selectedIndex = min(max(0, itemCount - 1), navState.selectedIndex + 1)
-            return nil
         case 36: // Enter / Return
-            selectItemAtIndex(navState.selectedIndex)
-            return nil
+            let idx = navState.selectedIndex
+            DispatchQueue.main.async { [weak self] in self?.selectItemAtIndex(idx) }
         default:
-            // Number keys 1-9 for quick paste (only when search not focused)
-            if !isSearchFocused, let chars = event.characters, let num = Int(chars), num >= 1, num <= 9 {
-                selectItemAtIndex(num - 1)
-                return nil
+            // Number keys 1-9 quick-paste
+            if let chars = event.charactersIgnoringModifiers, let num = Int(chars), num >= 1, num <= 9 {
+                DispatchQueue.main.async { [weak self] in self?.selectItemAtIndex(num - 1) }
             }
-            return event
         }
     }
 
