@@ -1,6 +1,28 @@
 import SwiftUI
 import AppKit
 
+// MARK: - Source App Color System
+
+struct SourceAppColor {
+    /// Predefined palette of distinct, readable colors for source app badges
+    private static let palette: [Color] = [
+        Color(red: 0.4, green: 0.6, blue: 1.0),   // Blue
+        Color(red: 0.5, green: 0.85, blue: 0.5),   // Green
+        Color(red: 1.0, green: 0.6, blue: 0.4),    // Orange
+        Color(red: 0.85, green: 0.5, blue: 0.9),   // Purple
+        Color(red: 1.0, green: 0.75, blue: 0.35),   // Yellow
+        Color(red: 0.45, green: 0.85, blue: 0.85),  // Teal
+        Color(red: 1.0, green: 0.5, blue: 0.6),     // Pink
+        Color(red: 0.7, green: 0.7, blue: 0.95),    // Lavender
+    ]
+
+    /// Returns a consistent color for a given app name
+    static func color(for appName: String) -> Color {
+        let hash = abs(appName.hashValue)
+        return palette[hash % palette.count]
+    }
+}
+
 struct PickerView: View {
     @ObservedObject private var manager = ClipboardManager.shared
     var onSelect: (ClipboardItem) -> Void
@@ -38,7 +60,7 @@ struct PickerView: View {
 
                     Text("Clipboard")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundColor(.white)
 
                     Spacer()
 
@@ -58,6 +80,15 @@ struct PickerView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(.quaternary, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    // Close button
+                    Button(action: { onDismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.secondary)
+                            .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -139,7 +170,7 @@ struct PickerView: View {
                     Image(systemName: "hand.point.up.fill")
                         .font(.system(size: 10))
                         .foregroundStyle(.quaternary)
-                    Text("Click to paste • Hover for actions")
+                    Text("Click to paste")
                         .font(.system(size: 10))
                         .foregroundStyle(.quaternary)
                     Spacer()
@@ -180,7 +211,7 @@ struct ClipboardItemRow: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(index == 0 ? Color.accentColor : .secondary)
                 } else {
-                    Text(index < 9 ? "\(index + 1)" : "•")
+                    Text(index < 9 ? "\(index + 1)" : "\u{2022}")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(index == 0 ? Color.accentColor : .secondary)
                 }
@@ -202,32 +233,28 @@ struct ClipboardItemRow: View {
 
                     HStack(spacing: 4) {
                         if let size = item.imageSize {
-                            Text("\(Int(size.width))×\(Int(size.height))")
+                            Text("\(Int(size.width))\u{00D7}\(Int(size.height))")
                                 .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.tertiary)
+                                .foregroundColor(.white.opacity(0.5))
                         }
                         if let source = item.sourceApp {
-                            Text("·")
-                                .foregroundStyle(.quaternary)
-                            Text(source)
-                                .font(.system(size: 10))
-                                .foregroundStyle(.tertiary)
+                            Text("\u{00B7}")
+                                .foregroundColor(.white.opacity(0.3))
+                            SourceAppBadge(appName: source)
                         }
                     }
                 }
             } else {
                 // Text preview
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(item.preview)
                         .font(.system(size: 13))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                        .foregroundStyle(.primary.opacity(isHovered ? 1.0 : 0.85))
+                        .foregroundColor(.white.opacity(isHovered ? 1.0 : 0.9))
 
                     if let source = item.sourceApp {
-                        Text(source)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
+                        SourceAppBadge(appName: source)
                     }
                 }
             }
@@ -275,6 +302,22 @@ struct ClipboardItemRow: View {
         )
         .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .onTapGesture { onSelect() }
+    }
+}
+
+// MARK: - Source App Badge
+
+struct SourceAppBadge: View {
+    let appName: String
+
+    var body: some View {
+        let color = SourceAppColor.color(for: appName)
+        Text(appName)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.15), in: Capsule())
     }
 }
 
