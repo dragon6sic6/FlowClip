@@ -1,27 +1,6 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Source App Color System
-
-struct SourceAppColor {
-    /// Predefined palette of distinct, readable colors for source app badges
-    private static let palette: [Color] = [
-        Color(red: 0.4, green: 0.6, blue: 1.0),   // Blue
-        Color(red: 0.5, green: 0.85, blue: 0.5),   // Green
-        Color(red: 1.0, green: 0.6, blue: 0.4),    // Orange
-        Color(red: 0.85, green: 0.5, blue: 0.9),   // Purple
-        Color(red: 1.0, green: 0.75, blue: 0.35),   // Yellow
-        Color(red: 0.45, green: 0.85, blue: 0.85),  // Teal
-        Color(red: 1.0, green: 0.5, blue: 0.6),     // Pink
-        Color(red: 0.7, green: 0.7, blue: 0.95),    // Lavender
-    ]
-
-    /// Returns a consistent color for a given app name
-    static func color(for appName: String) -> Color {
-        let hash = abs(appName.hashValue)
-        return palette[hash % palette.count]
-    }
-}
 
 struct PickerView: View {
     @ObservedObject private var manager = ClipboardManager.shared
@@ -240,7 +219,9 @@ struct ClipboardItemRow: View {
                         if let source = item.sourceApp {
                             Text("\u{00B7}")
                                 .foregroundColor(.white.opacity(0.3))
-                            SourceAppBadge(appName: source)
+                            Text(source)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
                         }
                     }
                 }
@@ -254,7 +235,9 @@ struct ClipboardItemRow: View {
                         .foregroundColor(.white.opacity(isHovered ? 1.0 : 0.9))
 
                     if let source = item.sourceApp {
-                        SourceAppBadge(appName: source)
+                        Text(source)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
                     }
                 }
             }
@@ -305,21 +288,6 @@ struct ClipboardItemRow: View {
     }
 }
 
-// MARK: - Source App Badge
-
-struct SourceAppBadge: View {
-    let appName: String
-
-    var body: some View {
-        let color = SourceAppColor.color(for: appName)
-        Text(appName)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundColor(color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.15), in: Capsule())
-    }
-}
 
 struct SessionTimerBadge: View {
     @ObservedObject private var manager = ClipboardManager.shared
