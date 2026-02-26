@@ -12,7 +12,10 @@ struct PickerView: View {
 
     var filteredItems: [ClipboardItem] {
         if searchText.isEmpty { return manager.items }
-        return manager.items.filter { $0.preview.localizedCaseInsensitiveContains(searchText) }
+        return manager.items.filter {
+            $0.isImage ? "image".localizedCaseInsensitiveContains(searchText) :
+            $0.preview.localizedCaseInsensitiveContains(searchText)
+        }
     }
 
     var body: some View {
@@ -172,23 +175,60 @@ struct ClipboardItemRow: View {
                 Circle()
                     .fill(index == 0 ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.1))
                     .frame(width: 26, height: 26)
-                Text(index < 9 ? "\(index + 1)" : "•")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(index == 0 ? Color.accentColor : .secondary)
+                if item.isImage {
+                    Image(systemName: "photo")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(index == 0 ? Color.accentColor : .secondary)
+                } else {
+                    Text(index < 9 ? "\(index + 1)" : "•")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(index == 0 ? Color.accentColor : .secondary)
+                }
             }
 
             // Content preview
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.preview)
-                    .font(.system(size: 13))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .foregroundStyle(.primary.opacity(isHovered ? 1.0 : 0.85))
+            if item.isImage, let thumbnail = item.thumbnail {
+                // Image thumbnail
+                VStack(alignment: .leading, spacing: 4) {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxHeight: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
+                        )
 
-                if let source = item.sourceApp {
-                    Text(source)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
+                    HStack(spacing: 4) {
+                        if let size = item.imageSize {
+                            Text("\(Int(size.width))×\(Int(size.height))")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                        }
+                        if let source = item.sourceApp {
+                            Text("·")
+                                .foregroundStyle(.quaternary)
+                            Text(source)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            } else {
+                // Text preview
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.preview)
+                        .font(.system(size: 13))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .foregroundStyle(.primary.opacity(isHovered ? 1.0 : 0.85))
+
+                    if let source = item.sourceApp {
+                        Text(source)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
 
@@ -216,7 +256,7 @@ struct ClipboardItemRow: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 9)
+        .padding(.vertical, item.isImage ? 10 : 9)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(isHovered

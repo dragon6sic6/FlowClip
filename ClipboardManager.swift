@@ -9,6 +9,8 @@ struct ClipboardItem: Identifiable, Equatable {
     let sourceApp: String?
     var isImage: Bool = false
     var image: NSImage?
+    var thumbnail: NSImage?
+    var imageSize: NSSize?
 
     init(content: String, sourceApp: String? = nil) {
         self.id = UUID()
@@ -16,6 +18,31 @@ struct ClipboardItem: Identifiable, Equatable {
         self.preview = String(content.prefix(200)).trimmingCharacters(in: .whitespacesAndNewlines)
         self.timestamp = Date()
         self.sourceApp = sourceApp
+    }
+
+    init(image: NSImage, sourceApp: String? = nil) {
+        self.id = UUID()
+        self.isImage = true
+        self.image = image
+        self.imageSize = image.size
+        self.content = ""
+        let w = Int(image.size.width)
+        let h = Int(image.size.height)
+        self.preview = "Image — \(w) × \(h)"
+        self.timestamp = Date()
+        self.sourceApp = sourceApp
+
+        // Generate thumbnail (max 120pt on longest side)
+        let maxThumb: CGFloat = 120
+        let scale = min(maxThumb / image.size.width, maxThumb / image.size.height, 1.0)
+        let thumbSize = NSSize(width: image.size.width * scale, height: image.size.height * scale)
+        let thumb = NSImage(size: thumbSize)
+        thumb.lockFocus()
+        image.draw(in: NSRect(origin: .zero, size: thumbSize),
+                   from: NSRect(origin: .zero, size: image.size),
+                   operation: .copy, fraction: 1.0)
+        thumb.unlockFocus()
+        self.thumbnail = thumb
     }
 
     static func == (lhs: ClipboardItem, rhs: ClipboardItem) -> Bool {
@@ -80,10 +107,34 @@ class ClipboardManager: ObservableObject {
         guard currentCount != lastChangeCount else { return }
         lastChangeCount = currentCount
 
-        guard let content = NSPasteboard.general.string(forType: .string),
+        let pb = NSPasteboard.general
+        let frontApp = NSWorkspace.shared.frontmostApplication?.localizedName
+
+        // Check for image first (tiff is the universal pasteboard image type on macOS)
+        let imageTypes: [NSPasteboard.PasteboardType] = [.tiff, .png]
+        let hasImage = imageTypes.contains(where: { pb.data(forType: $0) != nil })
+
+        if hasImage, let imgData = pb.data(forType: .tiff) ?? pb.data(forType: .png),
+           let image = NSImage(data: imgData) {
+            let newItem = ClipboardItem(image: image, sourceApp: frontApp)
+            DispatchQueue.main.async {
+                // Skip if the top item is already an image of the same size
+                if let top = self.items.first, top.isImage,
+                   top.imageSize == image.size { return }
+
+                self.items.insert(newItem, at: 0)
+
+                if self.items.count > self.maxRemember {
+                    self.items = Array(self.items.prefix(self.maxRemember))
+                }
+            }
+            return
+        }
+
+        // Text content
+        guard let content = pb.string(forType: .string),
               !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-        let frontApp = NSWorkspace.shared.frontmostApplication?.localizedName
         let newItem = ClipboardItem(content: content, sourceApp: frontApp)
 
         DispatchQueue.main.async {
@@ -92,7 +143,7 @@ class ClipboardManager: ObservableObject {
 
             // Remove duplicates if enabled (move to top)
             if self.removeDuplicates {
-                self.items.removeAll { $0.content == content }
+                self.items.removeAll { $0.content == content && !$0.isImage }
             }
 
             self.items.insert(newItem, at: 0)
@@ -106,7 +157,11 @@ class ClipboardManager: ObservableObject {
 
     func paste(item: ClipboardItem) {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(item.content, forType: .string)
+        if item.isImage, let image = item.image {
+            NSPasteboard.general.writeObjects([image])
+        } else {
+            NSPasteboard.general.setString(item.content, forType: .string)
+        }
         // Update changeCount so the poll doesn't re-add this item
         lastChangeCount = NSPasteboard.general.changeCount
     }

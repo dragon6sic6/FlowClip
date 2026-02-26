@@ -136,8 +136,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             historySubmenu.addItem(emptyItem)
         } else {
             for (index, item) in items.enumerated() {
-                let preview = String(item.preview.prefix(60))
-                    .replacingOccurrences(of: "\n", with: " ")
+                let preview: String
+                if item.isImage {
+                    let dims = item.imageSize.map { "\(Int($0.width))×\(Int($0.height))" } ?? ""
+                    preview = "📷 Image \(dims)"
+                } else {
+                    preview = String(item.preview.prefix(60))
+                        .replacingOccurrences(of: "\n", with: " ")
+                }
                 let menuEntry = NSMenuItem(
                     title: preview,
                     action: #selector(historyItemClicked(_:)),
@@ -145,8 +151,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 )
                 menuEntry.target = self
                 menuEntry.tag = index
+                // Show small thumbnail in menu for images
+                if item.isImage, let thumb = item.thumbnail {
+                    let menuThumb = NSImage(size: NSSize(width: 16, height: 16))
+                    menuThumb.lockFocus()
+                    thumb.draw(in: NSRect(origin: .zero, size: NSSize(width: 16, height: 16)),
+                               from: NSRect(origin: .zero, size: thumb.size),
+                               operation: .copy, fraction: 1.0)
+                    menuThumb.unlockFocus()
+                    menuEntry.image = menuThumb
+                }
                 if let source = item.sourceApp {
-                    menuEntry.toolTip = "\(source) · \(item.content.prefix(200))"
+                    menuEntry.toolTip = item.isImage
+                        ? "\(source) · Image"
+                        : "\(source) · \(item.content.prefix(200))"
                 }
                 historySubmenu.addItem(menuEntry)
             }
