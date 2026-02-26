@@ -148,19 +148,20 @@ struct PickerView: View {
                 HStack {
                     Image(systemName: "hand.point.up.fill")
                         .font(.system(size: 10))
-                        .foregroundStyle(.quaternary)
+                        .foregroundColor(.accentColor.opacity(0.7))
                     Text("Click to paste")
                         .font(.system(size: 10))
-                        .foregroundStyle(.quaternary)
+                        .foregroundColor(.accentColor.opacity(0.7))
                     Spacer()
                     Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s")")
                         .font(.system(size: 10))
-                        .foregroundStyle(.quaternary)
+                        .foregroundColor(.accentColor.opacity(0.7))
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .onAppear {
             withAnimation {
                 appeared = true
