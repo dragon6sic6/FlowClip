@@ -166,6 +166,14 @@ class ClipboardManager: ObservableObject {
         lastChangeCount = NSPasteboard.general.changeCount
     }
 
+    func stripFormattingFromClipboard() {
+        let pb = NSPasteboard.general
+        guard let text = pb.string(forType: .string) else { return }
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+        lastChangeCount = pb.changeCount
+    }
+
     func remove(item: ClipboardItem) {
         DispatchQueue.main.async {
             self.items.removeAll { $0.id == item.id }

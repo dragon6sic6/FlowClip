@@ -158,6 +158,16 @@ class KeyboardMonitor {
             let hasCmd = (event.flags.rawValue & CGEventFlags.maskCommand.rawValue) != 0
             guard hasCmd else { return Unmanaged.passUnretained(event) }
 
+            // Cmd+Shift+V = Paste as plain text (strip formatting, don't show picker)
+            let hasShift = (event.flags.rawValue & CGEventFlags.maskShift.rawValue) != 0
+            if hasShift {
+                DispatchQueue.main.async { [weak self] in
+                    ClipboardManager.shared.stripFormattingFromClipboard()
+                    self?.postSyntheticPaste()
+                }
+                return nil
+            }
+
             // First Cmd+V detected — suppress it and start hold timer
             suppressingV = true
 

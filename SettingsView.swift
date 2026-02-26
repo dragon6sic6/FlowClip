@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct SettingsView: View {
     @ObservedObject private var manager = ClipboardManager.shared
@@ -139,6 +140,35 @@ struct SettingsView: View {
                     }
                 }
 
+                // General card
+                settingsCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        cardHeader(icon: "gearshape", title: "General")
+
+                        HStack {
+                            Text("Launch at Login")
+                                .font(.system(size: 12))
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { SMAppService.mainApp.status == .enabled },
+                                set: { newValue in
+                                    do {
+                                        if newValue {
+                                            try SMAppService.mainApp.register()
+                                        } else {
+                                            try SMAppService.mainApp.unregister()
+                                        }
+                                    } catch {
+                                        NSLog("FlowClip: Launch at login error: \(error)")
+                                    }
+                                }
+                            ))
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+
                 // Keyboard Shortcuts card
                 settingsCard {
                     VStack(alignment: .leading, spacing: 12) {
@@ -147,7 +177,10 @@ struct SettingsView: View {
                         VStack(spacing: 8) {
                             shortcutRow(icon: "doc.on.doc", text: "Copy anything", shortcut: "⌘C")
                             shortcutRow(icon: "list.clipboard", text: "Show picker", shortcut: "Hold ⌘V")
-                            shortcutRow(icon: "arrow.up.doc", text: "Paste item", shortcut: "Click")
+                            shortcutRow(icon: "arrow.up.doc", text: "Paste item", shortcut: "Enter")
+                            shortcutRow(icon: "number", text: "Quick paste", shortcut: "1-9")
+                            shortcutRow(icon: "textformat", text: "Paste plain text", shortcut: "⇧⌘V")
+                            shortcutRow(icon: "arrow.up.arrow.down", text: "Navigate", shortcut: "↑↓")
                             shortcutRow(icon: "escape", text: "Dismiss", shortcut: "Esc")
                         }
                     }

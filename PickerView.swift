@@ -1,9 +1,15 @@
 import SwiftUI
 import AppKit
 
+// MARK: - Keyboard Navigation State
+
+class PickerNavState: ObservableObject {
+    @Published var selectedIndex: Int = 0
+}
 
 struct PickerView: View {
     @ObservedObject private var manager = ClipboardManager.shared
+    @ObservedObject var navState: PickerNavState
     var onSelect: (ClipboardItem) -> Void
     var onDismiss: () -> Void
 
@@ -96,62 +102,71 @@ struct PickerView: View {
                     .opacity(0.5)
 
                 // Items list
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 4) {
-                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
-                            ClipboardItemRow(
-                                item: item,
-                                index: index,
-                                isHovered: hoveredId == item.id,
-                                onSelect: { onSelect(item) },
-                                onDelete: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        manager.remove(item: item)
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: 4) {
+                            ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
+                                ClipboardItemRow(
+                                    item: item,
+                                    index: index,
+                                    isHighlighted: hoveredId == item.id || (navState.selectedIndex == index && hoveredId == nil),
+                                    onSelect: { onSelect(item) },
+                                    onDelete: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            manager.remove(item: item)
+                                        }
+                                    }
+                                )
+                                .id(item.id)
+                                .onHover { hovering in
+                                    withAnimation(.easeInOut(duration: 0.12)) {
+                                        hoveredId = hovering ? item.id : nil
+                                    }
+                                    if hovering {
+                                        navState.selectedIndex = index
                                     }
                                 }
-                            )
-                            .onHover { hovering in
-                                withAnimation(.easeInOut(duration: 0.12)) {
-                                    hoveredId = hovering ? item.id : nil
-                                }
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .scale(scale: 0.9).combined(with: .opacity)
+                                ))
+                                .offset(y: appeared ? 0 : 20)
+                                .opacity(appeared ? 1 : 0)
+                                .animation(
+                                    .spring(response: 0.4, dampingFraction: 0.75)
+                                    .delay(Double(index) * 0.04),
+                                    value: appeared
+                                )
                             }
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .scale(scale: 0.9).combined(with: .opacity)
-                            ))
-                            .offset(y: appeared ? 0 : 20)
-                            .opacity(appeared ? 1 : 0)
-                            .animation(
-                                .spring(response: 0.4, dampingFraction: 0.75)
-                                .delay(Double(index) * 0.04),
-                                value: appeared
-                            )
-                        }
 
-                        if filteredItems.isEmpty {
-                            VStack(spacing: 8) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 24))
-                                    .foregroundStyle(.tertiary)
-                                Text("No results")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.tertiary)
+                            if filteredItems.isEmpty {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(.tertiary)
+                                    Text("No results")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(.vertical, 24)
                             }
-                            .padding(.vertical, 24)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                    }
+                    .onChange(of: navState.selectedIndex) { newIndex in
+                        guard newIndex >= 0, newIndex < filteredItems.count else { return }
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            proxy.scrollTo(filteredItems[newIndex].id, anchor: .center)
                         }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
                 }
 
                 // Footer hint
-                HStack {
-                    Image(systemName: "hand.point.up.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.accentColor.opacity(0.7))
-                    Text("Click to paste")
-                        .font(.system(size: 10))
-                        .foregroundColor(.accentColor.opacity(0.7))
+                HStack(spacing: 12) {
+                    footerHint(icon: "arrow.up.arrow.down", text: "Navigate")
+                    footerHint(icon: "return", text: "Paste")
+                    footerHint(icon: "number", text: "1-9 Quick")
                     Spacer()
                     Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s")")
                         .font(.system(size: 10))
@@ -167,13 +182,27 @@ struct PickerView: View {
                 appeared = true
             }
         }
+        .onChange(of: searchText) { _ in
+            navState.selectedIndex = 0
+        }
+    }
+
+    @ViewBuilder
+    func footerHint(icon: String, text: String) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: icon)
+                .font(.system(size: 9))
+            Text(text)
+                .font(.system(size: 10))
+        }
+        .foregroundColor(.accentColor.opacity(0.7))
     }
 }
 
 struct ClipboardItemRow: View {
     let item: ClipboardItem
     let index: Int
-    let isHovered: Bool
+    let isHighlighted: Bool
     var onSelect: () -> Void
     var onDelete: () -> Void
 
@@ -233,7 +262,7 @@ struct ClipboardItemRow: View {
                         .font(.system(size: 13))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                        .foregroundColor(.white.opacity(isHovered ? 1.0 : 0.9))
+                        .foregroundColor(.white.opacity(isHighlighted ? 1.0 : 0.9))
 
                     if let source = item.sourceApp {
                         Text(source)
@@ -246,7 +275,7 @@ struct ClipboardItemRow: View {
             Spacer()
 
             // Hover action icons
-            if isHovered {
+            if isHighlighted {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.on.doc")
                         .font(.system(size: 14))
@@ -270,19 +299,19 @@ struct ClipboardItemRow: View {
         .padding(.vertical, item.isImage ? 10 : 9)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isHovered
+                .fill(isHighlighted
                     ? (index == 0 ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.07))
                     : Color.clear
                 )
-                .animation(.easeInOut(duration: 0.12), value: isHovered)
+                .animation(.easeInOut(duration: 0.12), value: isHighlighted)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(
-                    isHovered ? Color.accentColor.opacity(0.2) : Color.clear,
+                    isHighlighted ? Color.accentColor.opacity(0.2) : Color.clear,
                     lineWidth: 1
                 )
-                .animation(.easeInOut(duration: 0.12), value: isHovered)
+                .animation(.easeInOut(duration: 0.12), value: isHighlighted)
         )
         .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .onTapGesture { onSelect() }

@@ -13,7 +13,9 @@ class PickerWindow: NSObject {
     private var window: NSWindow?
     private var hostingView: NSHostingView<PickerView>?
     private var clickOutsideMonitor: Any?
+    private var keyMonitorLocal: Any?
     private var previousApp: NSRunningApplication?
+    private let navState = PickerNavState()
 
     /// Called whenever the picker is dismissed (by selection, click-outside, or escape).
     var onDismiss: (() -> Void)?
@@ -28,10 +30,11 @@ class PickerWindow: NSObject {
 
     deinit {
         removeClickMonitor()
+        removeKeyMonitor()
     }
 
     private func setupWindow() {
-        let pickerView = PickerView(onSelect: { [weak self] item in
+        let pickerView = PickerView(navState: navState, onSelect: { [weak self] item in
             self?.selectItem(item)
         }, onDismiss: { [weak self] in
             self?.dismiss()
@@ -62,8 +65,11 @@ class PickerWindow: NSObject {
         // Save the app that was active before we steal focus
         previousApp = NSWorkspace.shared.frontmostApplication
 
+        // Reset keyboard navigation
+        navState.selectedIndex = 0
+
         // Recreate view with fresh state
-        let pickerView = PickerView(onSelect: { [weak self] item in
+        let pickerView = PickerView(navState: navState, onSelect: { [weak self] item in
             self?.selectItem(item)
         }, onDismiss: { [weak self] in
             self?.dismiss()
@@ -98,10 +104,46 @@ class PickerWindow: NSObject {
                 self.dismiss()
             }
         }
+
+        // Local key monitor for keyboard navigation
+        keyMonitorLocal = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            return self?.handleLocalKey(event) ?? event
+        }
+    }
+
+    private func handleLocalKey(_ event: NSEvent) -> NSEvent? {
+        let isSearchFocused = window?.firstResponder is NSTextView
+        let itemCount = ClipboardManager.shared.items.count
+
+        switch event.keyCode {
+        case 126: // Arrow Up
+            navState.selectedIndex = max(0, navState.selectedIndex - 1)
+            return nil
+        case 125: // Arrow Down
+            navState.selectedIndex = min(max(0, itemCount - 1), navState.selectedIndex + 1)
+            return nil
+        case 36: // Enter / Return
+            selectItemAtIndex(navState.selectedIndex)
+            return nil
+        default:
+            // Number keys 1-9 for quick paste (only when search not focused)
+            if !isSearchFocused, let chars = event.characters, let num = Int(chars), num >= 1, num <= 9 {
+                selectItemAtIndex(num - 1)
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func selectItemAtIndex(_ index: Int) {
+        let items = ClipboardManager.shared.items
+        guard index >= 0, index < items.count else { return }
+        selectItem(items[index])
     }
 
     func hidePicker() {
         removeClickMonitor()
+        removeKeyMonitor()
 
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
@@ -126,6 +168,7 @@ class PickerWindow: NSObject {
 
         // 2. Close window immediately
         removeClickMonitor()
+        removeKeyMonitor()
         window?.orderOut(nil)
         onDismiss?()
 
@@ -212,6 +255,13 @@ class PickerWindow: NSObject {
         if let monitor = clickOutsideMonitor {
             NSEvent.removeMonitor(monitor)
             clickOutsideMonitor = nil
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let monitor = keyMonitorLocal {
+            NSEvent.removeMonitor(monitor)
+            keyMonitorLocal = nil
         }
     }
 }
