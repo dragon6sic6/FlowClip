@@ -28,6 +28,9 @@ class ClipboardManager: ObservableObject {
 
     @Published var items: [ClipboardItem] = []
     @Published var sessionDuration: TimeInterval = 1800 // 30 minutes default
+    @Published var maxRemember: Int = 50
+    @Published var displayInMenu: Int = 20
+    @Published var removeDuplicates: Bool = true
 
     private var lastChangeCount: Int = 0
     private var pollTimer: Timer?
@@ -41,14 +44,27 @@ class ClipboardManager: ObservableObject {
     }
 
     private func loadSettings() {
-        let duration = UserDefaults.standard.double(forKey: "sessionDuration")
-        if duration > 0 {
-            sessionDuration = duration
+        let defaults = UserDefaults.standard
+        let duration = defaults.double(forKey: "sessionDuration")
+        if duration > 0 { sessionDuration = duration }
+
+        let remember = defaults.integer(forKey: "maxRemember")
+        if remember > 0 { maxRemember = remember }
+
+        let display = defaults.integer(forKey: "displayInMenu")
+        if display > 0 { displayInMenu = display }
+
+        if defaults.object(forKey: "removeDuplicates") != nil {
+            removeDuplicates = defaults.bool(forKey: "removeDuplicates")
         }
     }
 
     func saveSettings() {
-        UserDefaults.standard.set(sessionDuration, forKey: "sessionDuration")
+        let defaults = UserDefaults.standard
+        defaults.set(sessionDuration, forKey: "sessionDuration")
+        defaults.set(maxRemember, forKey: "maxRemember")
+        defaults.set(displayInMenu, forKey: "displayInMenu")
+        defaults.set(removeDuplicates, forKey: "removeDuplicates")
     }
 
     func startPolling() {
@@ -67,17 +83,24 @@ class ClipboardManager: ObservableObject {
         guard let content = NSPasteboard.general.string(forType: .string),
               !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-        // Avoid duplicates at the top
-        if items.first?.content == content { return }
-
-        // Remove if already exists (move to top)
-        items.removeAll { $0.content == content }
-
         let frontApp = NSWorkspace.shared.frontmostApplication?.localizedName
         let newItem = ClipboardItem(content: content, sourceApp: frontApp)
 
         DispatchQueue.main.async {
+            // Avoid duplicates at the top
+            if self.items.first?.content == content { return }
+
+            // Remove duplicates if enabled (move to top)
+            if self.removeDuplicates {
+                self.items.removeAll { $0.content == content }
+            }
+
             self.items.insert(newItem, at: 0)
+
+            // Trim to max remember limit
+            if self.items.count > self.maxRemember {
+                self.items = Array(self.items.prefix(self.maxRemember))
+            }
         }
     }
 

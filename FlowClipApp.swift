@@ -19,6 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var keyMonitor: KeyboardMonitor!
     var popoverWindow: PickerWindow?
     var settingsWindow: NSWindow?
+    var aboutWindow: NSWindow?
     private var historyItems: [NSMenuItem] = []
     private var accessibilityCheckTimer: Timer?
 
@@ -116,8 +117,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // History submenu
         let historyItem = NSMenuItem(title: "History", action: nil, keyEquivalent: "")
         let historySubmenu = NSMenu()
-        let items = ClipboardManager.shared.items
-        if items.isEmpty {
+        let allItems = ClipboardManager.shared.items
+        let items = Array(allItems.prefix(ClipboardManager.shared.displayInMenu))
+        if allItems.isEmpty {
             let emptyItem = NSMenuItem(title: "No items yet", action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             historySubmenu.addItem(emptyItem)
@@ -145,6 +147,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         historyItem.submenu = historySubmenu
         menu.addItem(historyItem)
 
+        let aboutItem = NSMenuItem(title: "About FlowClip", action: #selector(openAbout), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit FlowClip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -173,6 +178,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settingsWindow?.center()
         settingsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc func openAbout() {
+        if aboutWindow == nil {
+            let aboutView = AboutView()
+            let hostingController = NSHostingController(rootView: aboutView)
+            aboutWindow = NSWindow(contentViewController: hostingController)
+            aboutWindow?.title = "About FlowClip"
+            aboutWindow?.styleMask = [.titled, .closable]
+            aboutWindow?.setContentSize(NSSize(width: 300, height: 260))
+            aboutWindow?.isReleasedWhenClosed = false
+        }
+        aboutWindow?.center()
+        aboutWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

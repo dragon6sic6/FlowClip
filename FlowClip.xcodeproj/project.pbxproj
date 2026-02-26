@@ -14,6 +14,7 @@
 		AA000001AAAA000000000005 /* PickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AAAA000000000005 /* PickerView.swift */; };
 		AA000001AAAA000000000006 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AAAA000000000006 /* SettingsView.swift */; };
 		AA000001AAAA000000000007 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AAAA000000000009 /* HistoryView.swift */; };
+		AA000001AAAA000000000008 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AAAA00000000000A /* AboutView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		AA000002AAAA000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA000002AAAA000000000008 /* FlowClip.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FlowClip.entitlements; sourceTree = "<group>"; };
 		AA000002AAAA000000000009 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		AA000002AAAA00000000000A /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		AA000003AAAA000000000001 /* FlowClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlowClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -50,6 +52,7 @@
 				AA000002AAAA000000000005 /* PickerView.swift */,
 				AA000002AAAA000000000006 /* SettingsView.swift */,
 				AA000002AAAA000000000009 /* HistoryView.swift */,
+				AA000002AAAA00000000000A /* AboutView.swift */,
 				AA000002AAAA000000000007 /* Info.plist */,
 				AA000002AAAA000000000008 /* FlowClip.entitlements */,
 				AA000005AAAA000000000002 /* Products */,
@@ -123,6 +126,7 @@
 				AA000001AAAA000000000005 /* PickerView.swift in Sources */,
 				AA000001AAAA000000000006 /* SettingsView.swift in Sources */,
 				AA000001AAAA000000000007 /* HistoryView.swift in Sources */,
+				AA000001AAAA000000000008 /* AboutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

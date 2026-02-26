@@ -83,6 +83,62 @@ struct SettingsView: View {
                     }
                 }
 
+                // Clippings card
+                settingsCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        cardHeader(icon: "doc.plaintext", title: "Clippings")
+
+                        // Remember
+                        HStack {
+                            Text("Remember")
+                                .font(.system(size: 12))
+                            Spacer()
+                            stepperControl(
+                                value: Binding(
+                                    get: { manager.maxRemember },
+                                    set: { manager.maxRemember = $0; manager.saveSettings() }
+                                ),
+                                range: 5...200,
+                                step: 5,
+                                label: "\(manager.maxRemember)"
+                            )
+                        }
+
+                        Divider().opacity(0.3)
+
+                        // Display in menu
+                        HStack {
+                            Text("Display in menu")
+                                .font(.system(size: 12))
+                            Spacer()
+                            stepperControl(
+                                value: Binding(
+                                    get: { manager.displayInMenu },
+                                    set: { manager.displayInMenu = $0; manager.saveSettings() }
+                                ),
+                                range: 5...100,
+                                step: 5,
+                                label: "\(manager.displayInMenu)"
+                            )
+                        }
+
+                        Divider().opacity(0.3)
+
+                        // Remove duplicates
+                        HStack {
+                            Text("Remove duplicates")
+                                .font(.system(size: 12))
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { manager.removeDuplicates },
+                                set: { manager.removeDuplicates = $0; manager.saveSettings() }
+                            ))
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+
                 // Keyboard Shortcuts card
                 settingsCard {
                     VStack(alignment: .leading, spacing: 12) {
@@ -254,6 +310,43 @@ struct SettingsView: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
             )
+    }
+
+    // MARK: - Stepper Control
+
+    @ViewBuilder
+    func stepperControl(value: Binding<Int>, range: ClosedRange<Int>, step: Int, label: String) -> some View {
+        HStack(spacing: 0) {
+            Button(action: {
+                let newVal = value.wrappedValue - step
+                if newVal >= range.lowerBound { value.wrappedValue = newVal }
+            }) {
+                Image(systemName: "minus")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 26, height: 26)
+            }
+            .buttonStyle(.plain)
+
+            Text(label)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .frame(width: 36)
+
+            Button(action: {
+                let newVal = value.wrappedValue + step
+                if newVal <= range.upperBound { value.wrappedValue = newVal }
+            }) {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 26, height: 26)
+            }
+            .buttonStyle(.plain)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(0.06))
+        )
     }
 
     // MARK: - Shortcut Row

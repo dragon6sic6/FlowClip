@@ -17,21 +17,14 @@ struct PickerView: View {
 
     var body: some View {
         ZStack {
-            // Liquid glass background
+            // Opaque background
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(Color(.windowBackgroundColor))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [.white.opacity(0.4), .white.opacity(0.1)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.25), radius: 30, x: 0, y: 10)
+                .shadow(color: .black.opacity(0.3), radius: 30, x: 0, y: 10)
 
             VStack(spacing: 0) {
                 // Header
