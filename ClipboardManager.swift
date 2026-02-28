@@ -81,6 +81,8 @@ class ClipboardManager: ObservableObject {
     private var lastChangeCount: Int = 0
     private var pollTimer: Timer?
     private var sessionTimer: Timer?
+    private var screenshotTimer: Timer?
+    private var lastScreenshotCheck: Date = Date()
     private var cancellables = Set<AnyCancellable>()
 
     private init() {
@@ -88,6 +90,7 @@ class ClipboardManager: ObservableObject {
         loadPinnedItems()
         startPolling()
         startSessionTimer()
+        startScreenshotMonitoring()
     }
 
     private func loadSettings() {
@@ -117,9 +120,11 @@ class ClipboardManager: ObservableObject {
     func startPolling() {
         pollTimer?.invalidate()
         lastChangeCount = NSPasteboard.general.changeCount
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             self?.checkClipboard()
         }
+        RunLoop.main.add(timer, forMode: .common)
+        pollTimer = timer
     }
 
     private func checkClipboard() {
@@ -130,12 +135,26 @@ class ClipboardManager: ObservableObject {
         let pb = NSPasteboard.general
         let frontApp = NSWorkspace.shared.frontmostApplication?.localizedName
 
-        // Check for image first (tiff is the universal pasteboard image type on macOS)
-        let imageTypes: [NSPasteboard.PasteboardType] = [.tiff, .png]
+        // Check for image first (tiff is universal, png for screenshots, also check JPEG)
+        let imageTypes: [NSPasteboard.PasteboardType] = [
+            .tiff, .png,
+            NSPasteboard.PasteboardType("public.jpeg"),
+            NSPasteboard.PasteboardType("public.heic")
+        ]
         let hasImage = imageTypes.contains(where: { pb.data(forType: $0) != nil })
 
-        if hasImage, let imgData = pb.data(forType: .tiff) ?? pb.data(forType: .png),
-           let image = NSImage(data: imgData) {
+        // Also check for file URLs pointing to images (macOS screenshots sometimes use this)
+        var imageFromFileURL: NSImage? = nil
+        if !hasImage,
+           let urlString = pb.string(forType: NSPasteboard.PasteboardType("public.file-url")),
+           let url = URL(string: urlString) {
+            let ext = url.pathExtension.lowercased()
+            if ["png", "jpg", "jpeg", "tiff", "heic"].contains(ext) {
+                imageFromFileURL = NSImage(contentsOf: url)
+            }
+        }
+
+        if let image = imageFromFileURL ?? (hasImage ? loadImageFromPasteboard(pb) : nil) {
             let newItem = ClipboardItem(image: image, sourceApp: frontApp)
             DispatchQueue.main.async {
                 // Skip if the top item is already an image of the same size
@@ -210,9 +229,11 @@ class ClipboardManager: ObservableObject {
     func startSessionTimer() {
         sessionTimer?.invalidate()
         guard sessionDuration > 0 else { return }
-        sessionTimer = Timer.scheduledTimer(withTimeInterval: sessionDuration, repeats: false) { [weak self] _ in
+        let timer = Timer(timeInterval: sessionDuration, repeats: false) { [weak self] _ in
             self?.clearAll()
         }
+        RunLoop.main.add(timer, forMode: .common)
+        sessionTimer = timer
     }
 
     func resetSessionTimer() {
@@ -223,6 +244,84 @@ class ClipboardManager: ObservableObject {
         sessionDuration = duration
         saveSettings()
         startSessionTimer()
+    }
+
+    private func loadImageFromPasteboard(_ pb: NSPasteboard) -> NSImage? {
+        if let data = pb.data(forType: .tiff) ?? pb.data(forType: .png)
+                    ?? pb.data(forType: NSPasteboard.PasteboardType("public.jpeg"))
+                    ?? pb.data(forType: NSPasteboard.PasteboardType("public.heic")) {
+            return NSImage(data: data)
+        }
+        return nil
+    }
+
+    // MARK: - Screenshot Directory Monitoring
+
+    private func screenshotSaveLocation() -> URL {
+        if let location = UserDefaults(suiteName: "com.apple.screencapture")?.string(forKey: "location") {
+            return URL(fileURLWithPath: (location as NSString).expandingTildeInPath)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+    }
+
+    func startScreenshotMonitoring() {
+        screenshotTimer?.invalidate()
+        lastScreenshotCheck = Date()
+        let timer = Timer(timeInterval: 1.5, repeats: true) { [weak self] _ in
+            self?.checkForNewScreenshots()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        screenshotTimer = timer
+    }
+
+    private func checkForNewScreenshots() {
+        let dir = screenshotSaveLocation()
+        let fm = FileManager.default
+        guard let files = try? fm.contentsOfDirectory(at: dir,
+                                                       includingPropertiesForKeys: [.creationDateKey],
+                                                       options: [.skipsHiddenFiles]) else { return }
+
+        let imageExtensions = Set(["png", "jpg", "jpeg", "tiff"])
+        let cutoff = lastScreenshotCheck
+
+        for file in files {
+            guard imageExtensions.contains(file.pathExtension.lowercased()) else { continue }
+            guard let attrs = try? fm.attributesOfItem(atPath: file.path),
+                  let created = attrs[.creationDate] as? Date,
+                  created > cutoff else { continue }
+
+            // Only capture very recent files (< 10 sec old) to avoid loading old images
+            let age = Date().timeIntervalSince(created)
+            guard age < 10 else { continue }
+
+            if let image = NSImage(contentsOf: file) {
+                let newItem = ClipboardItem(image: image, sourceApp: "Screenshot")
+                DispatchQueue.main.async {
+                    // Skip if top item is already same-size image
+                    if let top = self.items.first, top.isImage,
+                       top.imageSize == image.size { return }
+
+                    self.items.insert(newItem, at: 0)
+                    if self.items.count > self.maxRemember {
+                        self.items = Array(self.items.prefix(self.maxRemember))
+                    }
+                }
+            }
+        }
+        lastScreenshotCheck = Date()
+    }
+
+    // MARK: - Relative Time Helper
+
+    static func relativeTime(from date: Date) -> String {
+        let seconds = Int(Date().timeIntervalSince(date))
+        if seconds < 5 { return "just now" }
+        if seconds < 60 { return "\(seconds)s" }
+        let minutes = seconds / 60
+        if minutes < 60 { return "\(minutes)m" }
+        let hours = minutes / 60
+        if hours < 24 { return "\(hours)h" }
+        return "\(hours / 24)d"
     }
 
     // MARK: - Pinned Favorites

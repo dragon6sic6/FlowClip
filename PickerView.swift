@@ -232,7 +232,7 @@ struct PickerView: View {
                     Spacer()
                     Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s")")
                         .font(.system(size: 10))
-                        .foregroundColor(.accentColor.opacity(0.7))
+                        .foregroundColor(.white.opacity(0.5))
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -257,7 +257,7 @@ struct PickerView: View {
             Text(text)
                 .font(.system(size: 10))
         }
-        .foregroundColor(.accentColor.opacity(0.7))
+        .foregroundColor(.white.opacity(0.5))
     }
 }
 
@@ -317,6 +317,11 @@ struct ClipboardItemRow: View {
                                 .font(.system(size: 10))
                                 .foregroundStyle(.tertiary)
                         }
+                        Text("\u{00B7}")
+                            .foregroundColor(.white.opacity(0.3))
+                        Text(ClipboardManager.relativeTime(from: item.timestamp))
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.35))
                     }
                 }
             } else {
@@ -329,10 +334,15 @@ struct ClipboardItemRow: View {
                         .foregroundColor(.white.opacity(isHighlighted ? 1.0 : 0.9))
                         .help(item.content.count > 80 ? String(item.content.prefix(500)) : "")
 
-                    if let source = item.sourceApp {
-                        Text(source)
+                    HStack(spacing: 4) {
+                        if let source = item.sourceApp {
+                            Text(source)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                        }
+                        Text(ClipboardManager.relativeTime(from: item.timestamp))
                             .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
+                            .foregroundColor(.white.opacity(0.35))
                     }
                 }
             }
