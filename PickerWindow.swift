@@ -178,7 +178,7 @@ class PickerWindow: NSObject {
     }
 
     private func selectItem(_ item: ClipboardItem) {
-        NSLog("FlowClip: selectItem called — \(item.preview.prefix(40))")
+        NSLog("MindClip: selectItem called — \(item.preview.prefix(40))")
 
         // 1. Copy to clipboard
         ClipboardManager.shared.paste(item: item)
@@ -193,12 +193,12 @@ class PickerWindow: NSObject {
         let appToActivate = previousApp
         previousApp = nil
 
-        NSLog("FlowClip: reactivating \(appToActivate?.localizedName ?? "nil")")
+        NSLog("MindClip: reactivating \(appToActivate?.localizedName ?? "nil")")
         appToActivate?.activate(options: .activateIgnoringOtherApps)
 
         // Give the app time to regain focus, then send Cmd+V
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            NSLog("FlowClip: posting synthetic paste")
+            NSLog("MindClip: posting synthetic paste")
             self?.keyboardMonitor?.postSyntheticPaste()
         }
 

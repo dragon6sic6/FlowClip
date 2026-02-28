@@ -3,7 +3,7 @@ import AppKit
 import ApplicationServices
 
 @main
-struct FlowClipApp: App {
+struct MindClipApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
@@ -77,8 +77,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         let alert = NSAlert()
-        alert.messageText = "FlowClip Needs Accessibility Permission"
-        alert.informativeText = "FlowClip needs Accessibility access to detect Cmd+V.\n\nFind FlowClip in the list and toggle it ON."
+        alert.messageText = "MindClip Needs Accessibility Permission"
+        alert.informativeText = "MindClip needs Accessibility access to detect Cmd+V.\n\nFind MindClip in the list and toggle it ON."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "OK")
@@ -95,7 +95,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "FlowClip")
+            button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "MindClip")
             button.image?.isTemplate = true
         }
         rebuildMenu()
@@ -105,7 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        menu.addItem(NSMenuItem(title: "FlowClip", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "MindClip", action: nil, keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
 
         let accessOK = AXIsProcessTrusted()
@@ -176,12 +176,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         historyItem.submenu = historySubmenu
         menu.addItem(historyItem)
 
-        let aboutItem = NSMenuItem(title: "About FlowClip", action: #selector(openAbout), keyEquivalent: "")
+        let aboutItem = NSMenuItem(title: "About MindClip", action: #selector(openAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit FlowClip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit MindClip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         statusItem?.menu = menu
     }
@@ -199,7 +199,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let settingsView = SettingsView()
             let hostingController = NSHostingController(rootView: settingsView)
             settingsWindow = NSWindow(contentViewController: hostingController)
-            settingsWindow?.title = "FlowClip Settings"
+            settingsWindow?.title = "MindClip Settings"
             settingsWindow?.styleMask = [.titled, .closable, .resizable]
             settingsWindow?.setContentSize(NSSize(width: 400, height: 460))
             settingsWindow?.minSize = NSSize(width: 360, height: 420)
@@ -215,7 +215,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let aboutView = AboutView()
             let hostingController = NSHostingController(rootView: aboutView)
             aboutWindow = NSWindow(contentViewController: hostingController)
-            aboutWindow?.title = "About FlowClip"
+            aboutWindow?.title = "About MindClip"
             aboutWindow?.styleMask = [.titled, .closable]
             aboutWindow?.setContentSize(NSSize(width: 300, height: 260))
             aboutWindow?.isReleasedWhenClosed = false
@@ -240,7 +240,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let hostingController = NSHostingController(rootView: welcomeView)
         welcomeWindow = NSWindow(contentViewController: hostingController)
-        welcomeWindow?.title = "Welcome to FlowClip"
+        welcomeWindow?.title = "Welcome to MindClip"
         welcomeWindow?.styleMask = [.titled, .closable]
         welcomeWindow?.setContentSize(NSSize(width: 400, height: 520))
         welcomeWindow?.isReleasedWhenClosed = false

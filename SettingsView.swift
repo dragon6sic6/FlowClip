@@ -40,7 +40,7 @@ struct SettingsView: View {
                     .font(.system(size: 28))
                     .foregroundColor(.accentColor)
 
-                Text("FlowClip")
+                Text("MindClip")
                     .font(.system(size: 18, weight: .bold))
 
                 Text("Clipboard Manager")
@@ -159,7 +159,7 @@ struct SettingsView: View {
                                             try SMAppService.mainApp.unregister()
                                         }
                                     } catch {
-                                        NSLog("FlowClip: Launch at login error: \(error)")
+                                        NSLog("MindClip: Launch at login error: \(error)")
                                     }
                                 }
                             ))

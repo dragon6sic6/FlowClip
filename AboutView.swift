@@ -10,7 +10,7 @@ struct AboutView: View {
                 .foregroundColor(.accentColor)
                 .padding(.bottom, 4)
 
-            Text("FlowClip")
+            Text("MindClip")
                 .font(.system(size: 20, weight: .bold))
 
             Text("Version 1.0.0")

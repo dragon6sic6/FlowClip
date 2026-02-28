@@ -12,7 +12,7 @@ struct WelcomeView: View {
                     .foregroundColor(.accentColor)
                     .padding(.bottom, 4)
 
-                Text("Welcome to FlowClip")
+                Text("Welcome to MindClip")
                     .font(.system(size: 22, weight: .bold))
 
                 Text("A lightweight clipboard manager for macOS")
@@ -28,7 +28,7 @@ struct WelcomeView: View {
                     number: 1,
                     icon: "doc.on.doc",
                     title: "Copy as usual",
-                    description: "FlowClip quietly saves everything you copy with ⌘C.",
+                    description: "MindClip quietly saves everything you copy with ⌘C.",
                     isLast: false
                 )
                 stepRow(
@@ -42,7 +42,7 @@ struct WelcomeView: View {
                     number: 3,
                     icon: "lock.shield",
                     title: "Grant Accessibility",
-                    description: "FlowClip needs Accessibility permission to detect ⌘V. You'll be prompted next.",
+                    description: "MindClip needs Accessibility permission to detect ⌘V. You'll be prompted next.",
                     isLast: true
                 )
             }

@@ -56,7 +56,7 @@ class KeyboardMonitor {
             callback: eventTapCallback,
             userInfo: selfPtr
         ) else {
-            NSLog("FlowClip: FAILED to create CGEvent tap")
+            NSLog("MindClip: FAILED to create CGEvent tap")
             return
         }
 
@@ -72,12 +72,12 @@ class KeyboardMonitor {
             CFRunLoopAddSource(CFRunLoopGetCurrent(), src, .commonModes)
             CFRunLoopRun()
         }
-        thread.name = "com.flowclip.eventtap"
+        thread.name = "com.mindclip.eventtap"
         thread.qualityOfService = .userInteractive
         tapThread = thread
         thread.start()
 
-        NSLog("FlowClip: CGEvent tap ACTIVE on background thread")
+        NSLog("MindClip: CGEvent tap ACTIVE on background thread")
     }
 
     func stopMonitoring() {

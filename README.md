@@ -1,4 +1,4 @@
-# FlowClip
+# MindClip
 
 A lightweight clipboard manager for macOS. Copy things, pick from your history, paste faster.
 
@@ -8,7 +8,7 @@ Built by **Mindact**.
 
 ## How It Works
 
-1. **Copy as usual** - FlowClip runs in the menu bar and quietly saves everything you copy with `⌘C`.
+1. **Copy as usual** - MindClip runs in the menu bar and quietly saves everything you copy with `⌘C`.
 2. **Hold ⌘V to pick** - Tap `⌘V` to paste normally. Hold it down to open a picker overlay showing your clipboard history.
 3. **Click to paste** - Select any item from the picker and it gets pasted instantly.
 
@@ -32,12 +32,12 @@ Built by **Mindact**.
 
 ## Install
 
-1. Download `FlowClip.zip` from [Releases](https://github.com/dragon6sic6/FlowClip/releases) (or build from source)
-2. Unzip and drag **FlowClip.app** to your Applications folder
-3. Open FlowClip
+1. Download `MindClip.zip` from [Releases](https://github.com/dragon6sic6/MindClip/releases) (or build from source)
+2. Unzip and drag **MindClip.app** to your Applications folder
+3. Open MindClip
 4. Grant **Accessibility** permission when prompted (required for `⌘V` detection)
 
-> **Note:** macOS requires you to manually enable Accessibility access in **System Settings > Privacy & Security > Accessibility**. Toggle FlowClip ON.
+> **Note:** macOS requires you to manually enable Accessibility access in **System Settings > Privacy & Security > Accessibility**. Toggle MindClip ON.
 
 ## Keyboard Shortcuts
 
@@ -59,12 +59,12 @@ Access settings from the menu bar icon > **Settings...** (`⌘,`):
 - **Remember** - Maximum number of items to store (5-200)
 - **Display in menu** - How many items to show in the History submenu (5-100)
 - **Remove duplicates** - Automatically remove older copies of the same text
-- **Launch at Login** - Start FlowClip automatically when you log in
+- **Launch at Login** - Start MindClip automatically when you log in
 
 ## Architecture
 
 ```
-FlowClipApp.swift       - App entry, menu bar, window management
+MindClipApp.swift       - App entry, menu bar, window management
 ClipboardManager.swift  - Clipboard polling, history, settings persistence
 KeyboardMonitor.swift   - Global ⌘V intercept via NSEvent monitors
 PickerWindow.swift      - Borderless NSWindow hosting the floating picker
@@ -79,15 +79,15 @@ AboutView.swift         - About window
 Requires Xcode 15+ and macOS 13+.
 
 ```bash
-git clone https://github.com/dragon6sic6/FlowClip.git
-cd FlowClip
-xcodebuild -scheme FlowClip -configuration Release
+git clone https://github.com/dragon6sic6/MindClip.git
+cd MindClip
+xcodebuild -scheme MindClip -configuration Release
 ```
 
 To build a Universal Binary (Apple Silicon + Intel):
 
 ```bash
-xcodebuild -scheme FlowClip -configuration Release ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO
+xcodebuild -scheme MindClip -configuration Release ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO
 ```
 
 ## Requirements
