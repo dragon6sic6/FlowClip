@@ -14,13 +14,20 @@ Built by **Mindact**.
 
 ## Features
 
-- **Clipboard history** - Remembers up to 200 copied items per session
+- **Clipboard history** - Remembers up to 200 copied items (text and images) per session
+- **Screenshot capture** - Automatically detects new screenshots (⌘⇧4 / ⌘⇧3) and adds them to history
+- **Image support** - Copies of images, screenshots, and photos all appear in the picker with thumbnails
 - **Quick picker** - Hold `⌘V` to browse and select from history
-- **Menu bar history** - Hover over "History" in the menu bar for quick access
+- **Pinned favorites** - Pin frequently used snippets so they persist across sessions
+- **Drag & drop** - Drag any item from the picker directly into another app
+- **Keyboard navigation** - Arrow keys to navigate, Enter to paste, 1-9 for quick paste
+- **Paste as plain text** - `⇧⌘V` strips formatting and pastes clean text
+- **Search** - Toggle search in the picker to filter items
 - **Smart duplicates** - Optionally removes duplicate entries automatically
 - **Session duration** - Auto-clears history after a set time (15 min to forever)
-- **Source app labels** - See which app you copied from
-- **Search** - Type while picker is open to filter items
+- **Source app labels** - See which app you copied from, with relative timestamps
+- **Menu bar history** - Hover over "History" in the menu bar for quick access
+- **Launch at login** - Optional auto-start when you log in
 - **Lightweight** - No dock icon, no background noise, just a menu bar icon
 
 ## Install
@@ -38,9 +45,11 @@ Built by **Mindact**.
 |---|---|
 | Copy to history | `⌘C` (works everywhere) |
 | Open picker | Hold `⌘V` |
-| Paste selected item | Click / release `⌘V` |
+| Paste selected item | Enter or click |
+| Quick paste | `1` - `9` (while picker is open) |
+| Paste as plain text | `⇧⌘V` |
+| Navigate items | `↑` `↓` |
 | Dismiss picker | `Esc` |
-| Quick paste from menu | `⌘1` through `⌘9` |
 
 ## Settings
 
@@ -50,6 +59,7 @@ Access settings from the menu bar icon > **Settings...** (`⌘,`):
 - **Remember** - Maximum number of items to store (5-200)
 - **Display in menu** - How many items to show in the History submenu (5-100)
 - **Remove duplicates** - Automatically remove older copies of the same text
+- **Launch at Login** - Start FlowClip automatically when you log in
 
 ## Architecture
 
@@ -72,6 +82,12 @@ Requires Xcode 15+ and macOS 13+.
 git clone https://github.com/dragon6sic6/FlowClip.git
 cd FlowClip
 xcodebuild -scheme FlowClip -configuration Release
+```
+
+To build a Universal Binary (Apple Silicon + Intel):
+
+```bash
+xcodebuild -scheme FlowClip -configuration Release ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO
 ```
 
 ## Requirements
