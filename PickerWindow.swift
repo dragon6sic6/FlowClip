@@ -138,8 +138,10 @@ class PickerWindow: NSObject {
             // Async so monitor returns nil before monitor is removed
             DispatchQueue.main.async { [weak self] in self?.dismiss() }
         case 126: // Arrow Up
+            navState.scrollOnChange = true
             navState.selectedIndex = max(0, navState.selectedIndex - 1)
         case 125: // Arrow Down
+            navState.scrollOnChange = true
             navState.selectedIndex = min(max(0, itemCount - 1), navState.selectedIndex + 1)
         case 36: // Enter / Return
             let idx = navState.selectedIndex

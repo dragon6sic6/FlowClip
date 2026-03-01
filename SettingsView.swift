@@ -60,7 +60,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         cardHeader(icon: "timer", title: "Session Duration")
 
-                        Text("History clears automatically after this time.")
+                        Text("Picker history clears after this time.")
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
 
@@ -186,11 +186,71 @@ struct SettingsView: View {
                     }
                 }
 
-                // Memory card
+                // Menu Bar History card
+                settingsCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        cardHeader(icon: "clock.arrow.circlepath", title: "Menu Bar History")
+
+                        Text("Persists across sessions and app restarts.")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+
+                        HStack {
+                            Text("Keep history for")
+                                .font(.system(size: 12))
+                            Spacer()
+                            Picker("", selection: Binding(
+                                get: { manager.menuBarRetention },
+                                set: {
+                                    manager.menuBarRetention = $0
+                                    manager.saveSettings()
+                                    manager.saveMenuBarHistory()
+                                }
+                            )) {
+                                ForEach(MenuBarRetention.allCases, id: \.self) { option in
+                                    Text(option.label).tag(option)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(width: 120)
+                        }
+
+                        Divider().opacity(0.3)
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Stored Items")
+                                    .font(.system(size: 12, weight: .medium))
+                                Text("\(manager.menuBarHistory.count) item\(manager.menuBarHistory.count == 1 ? "" : "s")")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button(action: { manager.clearMenuBarHistory() }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 10))
+                                    Text("Clear")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color.red.opacity(0.1))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Picker session card
                 settingsCard {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Items in Memory")
+                            Text("Picker Session")
                                 .font(.system(size: 12, weight: .medium))
                             Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s")")
                                 .font(.system(size: 11))
@@ -203,7 +263,7 @@ struct SettingsView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "trash")
                                     .font(.system(size: 10))
-                                Text("Clear All")
+                                Text("Clear")
                                     .font(.system(size: 11, weight: .medium))
                             }
                             .foregroundColor(.red)

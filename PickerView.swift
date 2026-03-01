@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 
 class PickerNavState: ObservableObject {
     @Published var selectedIndex: Int = 0
+    var scrollOnChange = false  // only scroll for keyboard nav, not mouse hover
 }
 
 struct PickerView: View {
@@ -121,7 +122,7 @@ struct PickerView: View {
                 // Items list
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: 4) {
+                        VStack(spacing: 4) {
                             // Pinned favorites section
                             if !manager.pinnedItems.isEmpty && searchText.isEmpty {
                                 HStack(spacing: 4) {
@@ -181,24 +182,12 @@ struct PickerView: View {
                                 )
                                 .id(item.id)
                                 .onHover { hovering in
-                                    withAnimation(.easeInOut(duration: 0.12)) {
-                                        hoveredId = hovering ? item.id : nil
-                                    }
+                                    hoveredId = hovering ? item.id : nil
                                     if hovering {
                                         navState.selectedIndex = index
                                     }
                                 }
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .top).combined(with: .opacity),
-                                    removal: .scale(scale: 0.9).combined(with: .opacity)
-                                ))
-                                .offset(y: appeared ? 0 : 20)
-                                .opacity(appeared ? 1 : 0)
-                                .animation(
-                                    .spring(response: 0.4, dampingFraction: 0.75)
-                                    .delay(Double(index) * 0.04),
-                                    value: appeared
-                                )
+                                .transition(.opacity)
                             }
 
                             if filteredItems.isEmpty {
@@ -217,6 +206,8 @@ struct PickerView: View {
                         .padding(.vertical, 8)
                     }
                     .onChange(of: navState.selectedIndex) { newIndex in
+                        guard navState.scrollOnChange else { return }
+                        navState.scrollOnChange = false
                         guard newIndex >= 0, newIndex < filteredItems.count else { return }
                         withAnimation(.easeInOut(duration: 0.15)) {
                             proxy.scrollTo(filteredItems[newIndex].id, anchor: .center)
@@ -349,37 +340,35 @@ struct ClipboardItemRow: View {
 
             Spacer()
 
-            // Hover action icons
-            if isHighlighted {
-                HStack(spacing: 4) {
-                    // Pin / Unpin (text items only)
-                    if !item.isImage {
-                        Image(systemName: isPinned ? "pin.slash.fill" : "pin.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(isPinned ? .accentColor : .secondary)
-                            .rotationEffect(.degrees(45))
-                            .frame(width: 26, height: 26)
-                            .contentShape(Rectangle())
-                            .highPriorityGesture(TapGesture().onEnded { onPin() })
-                    }
-
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
+            // Action icons (always visible, brighter on hover)
+            HStack(spacing: 4) {
+                // Pin / Unpin (text items only)
+                if !item.isImage {
+                    Image(systemName: isPinned ? "pin.slash.fill" : "pin.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(isPinned ? .accentColor : .secondary)
+                        .rotationEffect(.degrees(45))
                         .frame(width: 26, height: 26)
                         .contentShape(Rectangle())
-                        .highPriorityGesture(TapGesture().onEnded { onSelect() })
-
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(.tertiary)
-                        .frame(width: 26, height: 26)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(TapGesture().onEnded { onDelete() })
+                        .highPriorityGesture(TapGesture().onEnded { onPin() })
                 }
-                .padding(.trailing, 4)
-                .transition(.scale.combined(with: .opacity))
+
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 26, height: 26)
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(TapGesture().onEnded { onSelect() })
+
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 26, height: 26)
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(TapGesture().onEnded { onDelete() })
             }
+            .padding(.trailing, 4)
+            .opacity(isHighlighted ? 1.0 : 0.3)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, item.isImage ? 10 : 9)
@@ -389,7 +378,6 @@ struct ClipboardItemRow: View {
                     ? (index == 0 ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.07))
                     : Color.clear
                 )
-                .animation(.easeInOut(duration: 0.12), value: isHighlighted)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -397,7 +385,6 @@ struct ClipboardItemRow: View {
                     isHighlighted ? Color.accentColor.opacity(0.2) : Color.clear,
                     lineWidth: 1
                 )
-                .animation(.easeInOut(duration: 0.12), value: isHighlighted)
         )
         .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .onTapGesture { onSelect() }
@@ -435,15 +422,14 @@ struct PinnedItemRow: View {
 
             Spacer()
 
-            if isHovered {
-                Button(action: onUnpin) {
-                    Image(systemName: "pin.slash.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .transition(.scale.combined(with: .opacity))
+            Button(action: onUnpin) {
+                Image(systemName: "pin.slash.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
             }
+            .buttonStyle(.plain)
+            .opacity(isHovered ? 1.0 : 0.3)
+            .animation(.easeInOut(duration: 0.12), value: isHovered)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)

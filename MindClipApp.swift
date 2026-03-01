@@ -118,58 +118,68 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(accessItem)
 
         let countItem = NSMenuItem(
-            title: "Clipboard Items: \(ClipboardManager.shared.items.count)",
+            title: "History: \(ClipboardManager.shared.menuBarHistory.count) items",
             action: nil, keyEquivalent: ""
         )
         menu.addItem(countItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // History submenu
+        // History submenu (reads from persistent menu bar history)
         let historyItem = NSMenuItem(title: "History", action: nil, keyEquivalent: "")
         let historySubmenu = NSMenu()
-        let allItems = ClipboardManager.shared.items
-        let items = Array(allItems.prefix(ClipboardManager.shared.displayInMenu))
-        if allItems.isEmpty {
+        let allHistory = ClipboardManager.shared.menuBarHistory
+        let historySlice = Array(allHistory.prefix(ClipboardManager.shared.displayInMenu))
+        if allHistory.isEmpty {
             let emptyItem = NSMenuItem(title: "No items yet", action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             historySubmenu.addItem(emptyItem)
         } else {
-            for (index, item) in items.enumerated() {
+            for (index, item) in historySlice.enumerated() {
                 let preview: String
                 if item.isImage {
-                    let dims = item.imageSize.map { "\(Int($0.width))×\(Int($0.height))" } ?? ""
-                    preview = "📷 Image \(dims)"
+                    preview = item.preview
                 } else {
                     preview = String(item.preview.prefix(60))
                         .replacingOccurrences(of: "\n", with: " ")
                 }
                 let menuEntry = NSMenuItem(
                     title: preview,
-                    action: #selector(historyItemClicked(_:)),
+                    action: item.isImage ? nil : #selector(historyItemClicked(_:)),
                     keyEquivalent: index < 9 ? "\(index + 1)" : ""
                 )
                 menuEntry.target = self
                 menuEntry.tag = index
-                // Show small thumbnail in menu for images
-                if item.isImage, let thumb = item.thumbnail {
-                    let menuThumb = NSImage(size: NSSize(width: 16, height: 16))
-                    menuThumb.lockFocus()
-                    thumb.draw(in: NSRect(origin: .zero, size: NSSize(width: 16, height: 16)),
-                               from: NSRect(origin: .zero, size: thumb.size),
-                               operation: .copy, fraction: 1.0)
-                    menuThumb.unlockFocus()
-                    menuEntry.image = menuThumb
-                }
-                if let source = item.sourceApp {
-                    menuEntry.toolTip = item.isImage
-                        ? "\(source) · Image"
-                        : "\(source) · \(item.content.prefix(200))"
+                if !item.isImage {
+                    if let source = item.sourceApp {
+                        menuEntry.toolTip = "\(source) · \(item.textContent.prefix(200))"
+                    }
                 }
                 historySubmenu.addItem(menuEntry)
             }
             historySubmenu.addItem(NSMenuItem.separator())
-            let clearItem = NSMenuItem(title: "Clear All", action: #selector(clearHistory), keyEquivalent: "")
+
+            // Retention submenu
+            let retentionItem = NSMenuItem(title: "Keep History...", action: nil, keyEquivalent: "")
+            let retentionSubmenu = NSMenu()
+            for option in MenuBarRetention.allCases {
+                let optionItem = NSMenuItem(
+                    title: option.label,
+                    action: #selector(setMenuBarRetention(_:)),
+                    keyEquivalent: ""
+                )
+                optionItem.target = self
+                optionItem.representedObject = option.rawValue
+                if ClipboardManager.shared.menuBarRetention == option {
+                    optionItem.state = .on
+                }
+                retentionSubmenu.addItem(optionItem)
+            }
+            retentionItem.submenu = retentionSubmenu
+            historySubmenu.addItem(retentionItem)
+
+            historySubmenu.addItem(NSMenuItem.separator())
+            let clearItem = NSMenuItem(title: "Clear History", action: #selector(clearHistory), keyEquivalent: "")
             clearItem.target = self
             historySubmenu.addItem(clearItem)
         }
@@ -250,13 +260,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func historyItemClicked(_ sender: NSMenuItem) {
         let index = sender.tag
-        let items = ClipboardManager.shared.items
-        guard index >= 0, index < items.count else { return }
-        ClipboardManager.shared.paste(item: items[index])
+        let history = ClipboardManager.shared.menuBarHistory
+        guard index >= 0, index < history.count else { return }
+        let item = history[index]
+        guard !item.isImage else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(item.textContent, forType: .string)
     }
 
     @objc func clearHistory() {
-        ClipboardManager.shared.clearAll()
+        ClipboardManager.shared.clearMenuBarHistory()
+    }
+
+    @objc func setMenuBarRetention(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let retention = MenuBarRetention(rawValue: rawValue) else { return }
+        ClipboardManager.shared.menuBarRetention = retention
+        ClipboardManager.shared.saveSettings()
+        ClipboardManager.shared.saveMenuBarHistory()
     }
 
     // MARK: - Picker

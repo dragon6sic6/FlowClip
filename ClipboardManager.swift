@@ -17,6 +17,42 @@ struct PinnedSnippet: Identifiable, Codable, Equatable {
     }
 }
 
+// MARK: - Persistent History Item (for menu bar long-term history)
+
+enum MenuBarRetention: String, CaseIterable, Codable {
+    case sevenDays = "7d"
+    case thirtyDays = "30d"
+    case ninetyDays = "90d"
+    case forever = "forever"
+
+    var label: String {
+        switch self {
+        case .sevenDays: return "7 days"
+        case .thirtyDays: return "30 days"
+        case .ninetyDays: return "90 days"
+        case .forever: return "Forever"
+        }
+    }
+}
+
+struct PersistentHistoryItem: Identifiable, Codable, Equatable {
+    let id: UUID
+    let textContent: String
+    let preview: String
+    let sourceApp: String?
+    let timestamp: Date
+    let isImage: Bool
+
+    init(from item: ClipboardItem) {
+        self.id = item.id
+        self.textContent = item.content
+        self.preview = item.preview
+        self.sourceApp = item.sourceApp
+        self.timestamp = item.timestamp
+        self.isImage = item.isImage
+    }
+}
+
 // MARK: - Clipboard Item
 
 struct ClipboardItem: Identifiable, Equatable {
@@ -77,6 +113,8 @@ class ClipboardManager: ObservableObject {
     @Published var maxRemember: Int = 50
     @Published var displayInMenu: Int = 20
     @Published var removeDuplicates: Bool = true
+    @Published var menuBarHistory: [PersistentHistoryItem] = []
+    @Published var menuBarRetention: MenuBarRetention = .forever
 
     private var lastChangeCount: Int = 0
     private var pollTimer: Timer?
@@ -88,6 +126,7 @@ class ClipboardManager: ObservableObject {
     private init() {
         loadSettings()
         loadPinnedItems()
+        loadMenuBarHistory()
         startPolling()
         startSessionTimer()
         startScreenshotMonitoring()
@@ -107,6 +146,11 @@ class ClipboardManager: ObservableObject {
         if defaults.object(forKey: "removeDuplicates") != nil {
             removeDuplicates = defaults.bool(forKey: "removeDuplicates")
         }
+
+        if let retentionStr = defaults.string(forKey: "menuBarRetention"),
+           let retention = MenuBarRetention(rawValue: retentionStr) {
+            menuBarRetention = retention
+        }
     }
 
     func saveSettings() {
@@ -115,6 +159,7 @@ class ClipboardManager: ObservableObject {
         defaults.set(maxRemember, forKey: "maxRemember")
         defaults.set(displayInMenu, forKey: "displayInMenu")
         defaults.set(removeDuplicates, forKey: "removeDuplicates")
+        defaults.set(menuBarRetention.rawValue, forKey: "menuBarRetention")
     }
 
     func startPolling() {
@@ -162,6 +207,7 @@ class ClipboardManager: ObservableObject {
                    top.imageSize == image.size { return }
 
                 self.items.insert(newItem, at: 0)
+                self.addToMenuBarHistory(newItem)
 
                 if self.items.count > self.maxRemember {
                     self.items = Array(self.items.prefix(self.maxRemember))
@@ -186,6 +232,7 @@ class ClipboardManager: ObservableObject {
             }
 
             self.items.insert(newItem, at: 0)
+            self.addToMenuBarHistory(newItem)
 
             // Trim to max remember limit
             if self.items.count > self.maxRemember {
@@ -267,7 +314,7 @@ class ClipboardManager: ObservableObject {
     func startScreenshotMonitoring() {
         screenshotTimer?.invalidate()
         lastScreenshotCheck = Date()
-        let timer = Timer(timeInterval: 1.5, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 3.0, repeats: true) { [weak self] _ in
             self?.checkForNewScreenshots()
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -277,6 +324,7 @@ class ClipboardManager: ObservableObject {
     private func checkForNewScreenshots() {
         let dir = screenshotSaveLocation()
         let fm = FileManager.default
+
         guard let files = try? fm.contentsOfDirectory(at: dir,
                                                        includingPropertiesForKeys: [.creationDateKey],
                                                        options: [.skipsHiddenFiles]) else { return }
@@ -286,8 +334,8 @@ class ClipboardManager: ObservableObject {
 
         for file in files {
             guard imageExtensions.contains(file.pathExtension.lowercased()) else { continue }
-            guard let attrs = try? fm.attributesOfItem(atPath: file.path),
-                  let created = attrs[.creationDate] as? Date,
+            guard let values = try? file.resourceValues(forKeys: [.creationDateKey]),
+                  let created = values.creationDate,
                   created > cutoff else { continue }
 
             // Only capture very recent files (< 10 sec old) to avoid loading old images
@@ -302,6 +350,7 @@ class ClipboardManager: ObservableObject {
                        top.imageSize == image.size { return }
 
                     self.items.insert(newItem, at: 0)
+                    self.addToMenuBarHistory(newItem)
                     if self.items.count > self.maxRemember {
                         self.items = Array(self.items.prefix(self.maxRemember))
                     }
@@ -322,6 +371,64 @@ class ClipboardManager: ObservableObject {
         let hours = minutes / 60
         if hours < 24 { return "\(hours)h" }
         return "\(hours / 24)d"
+    }
+
+    // MARK: - Menu Bar History Persistence
+
+    private var historyFileURL: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appDir = appSupport.appendingPathComponent("MindClip")
+        try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+        return appDir.appendingPathComponent("menuBarHistory.json")
+    }
+
+    func loadMenuBarHistory() {
+        guard let data = try? Data(contentsOf: historyFileURL),
+              let items = try? JSONDecoder().decode([PersistentHistoryItem].self, from: data) else { return }
+        menuBarHistory = items
+        applyMenuBarRetention()
+    }
+
+    func saveMenuBarHistory() {
+        applyMenuBarRetention()
+        guard let data = try? JSONEncoder().encode(menuBarHistory) else { return }
+        try? data.write(to: historyFileURL, options: .atomic)
+    }
+
+    func addToMenuBarHistory(_ item: ClipboardItem) {
+        // Skip images — only text is persisted in menu bar history
+        guard !item.isImage else { return }
+
+        let persistent = PersistentHistoryItem(from: item)
+
+        if removeDuplicates {
+            menuBarHistory.removeAll { $0.textContent == item.content }
+        }
+
+        menuBarHistory.insert(persistent, at: 0)
+        saveMenuBarHistory()
+    }
+
+    func clearMenuBarHistory() {
+        menuBarHistory.removeAll()
+        saveMenuBarHistory()
+    }
+
+    private func applyMenuBarRetention() {
+        switch menuBarRetention {
+        case .sevenDays:
+            menuBarHistory.removeAll { $0.timestamp < Date().addingTimeInterval(-7 * 24 * 3600) }
+        case .thirtyDays:
+            menuBarHistory.removeAll { $0.timestamp < Date().addingTimeInterval(-30 * 24 * 3600) }
+        case .ninetyDays:
+            menuBarHistory.removeAll { $0.timestamp < Date().addingTimeInterval(-90 * 24 * 3600) }
+        case .forever:
+            break
+        }
+        // Safety cap
+        if menuBarHistory.count > 500 {
+            menuBarHistory = Array(menuBarHistory.prefix(500))
+        }
     }
 
     // MARK: - Pinned Favorites

@@ -210,7 +210,7 @@ class KeyboardMonitor {
 
     private func showPickerIfNeeded() {
         guard !pickerVisible else { return }
-        guard ClipboardManager.shared.items.count > 1 else {
+        guard ClipboardManager.shared.items.count > 0 else {
             suppressingV = false
             postSyntheticPaste()
             return

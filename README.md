@@ -24,9 +24,10 @@ Built by **Mindact**.
 - **Paste as plain text** - `⇧⌘V` strips formatting and pastes clean text
 - **Search** - Toggle search in the picker to filter items
 - **Smart duplicates** - Optionally removes duplicate entries automatically
-- **Session duration** - Auto-clears history after a set time (15 min to forever)
+- **Session duration** - Picker auto-clears after a set time (15 min to forever)
+- **Persistent menu bar history** - Long-term history that survives session clears and app restarts
+- **Retention settings** - Keep menu bar history for 7 days, 30 days, 90 days, or forever
 - **Source app labels** - See which app you copied from, with relative timestamps
-- **Menu bar history** - Hover over "History" in the menu bar for quick access
 - **Launch at login** - Optional auto-start when you log in
 - **Lightweight** - No dock icon, no background noise, just a menu bar icon
 
@@ -55,20 +56,22 @@ Built by **Mindact**.
 
 Access settings from the menu bar icon > **Settings...** (`⌘,`):
 
-- **Session Duration** - How long to keep history (15 min, 30 min, 1 hour, 2 hours, forever, or custom)
-- **Remember** - Maximum number of items to store (5-200)
+- **Session Duration** - How long to keep picker history (15 min, 30 min, 1 hour, 2 hours, forever, or custom)
+- **Remember** - Maximum number of items to store in the picker (5-200)
 - **Display in menu** - How many items to show in the History submenu (5-100)
 - **Remove duplicates** - Automatically remove older copies of the same text
+- **Menu Bar History** - Configure retention (7/30/90 days or forever), view count, and clear history
 - **Launch at Login** - Start MindClip automatically when you log in
 
 ## Architecture
 
 ```
 MindClipApp.swift       - App entry, menu bar, window management
-ClipboardManager.swift  - Clipboard polling, history, settings persistence
+ClipboardManager.swift  - Clipboard polling, dual history, settings persistence
 KeyboardMonitor.swift   - Global ⌘V intercept via NSEvent monitors
 PickerWindow.swift      - Borderless NSWindow hosting the floating picker
-PickerView.swift        - SwiftUI picker overlay with animations
+PickerView.swift        - SwiftUI picker overlay
+HistoryView.swift       - History tab in settings
 SettingsView.swift      - Card-based settings UI
 WelcomeView.swift       - First-launch onboarding
 AboutView.swift         - About window
