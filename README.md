@@ -56,11 +56,16 @@ Built by **Mindact**.
 
 Access settings from the menu bar icon > **Settings...** (`⌘,`):
 
-- **Session Duration** - How long to keep picker history (15 min, 30 min, 1 hour, 2 hours, forever, or custom)
-- **Remember** - Maximum number of items to store in the picker (5-200)
-- **Display in menu** - How many items to show in the History submenu (5-100)
+**Picker** - Controls the ⌘V picker overlay
+- **Auto-clear after** - Session duration (15 min, 30 min, 1 hour, 2 hours, forever, or custom)
+- **Max items** - Maximum items to keep in the picker (5-200)
 - **Remove duplicates** - Automatically remove older copies of the same text
-- **Menu Bar History** - Configure retention (7/30/90 days or forever), view count, and clear history
+
+**Menu Bar History** - Long-term history that persists across sessions and restarts
+- **Keep history for** - Retention period (7 days, 30 days, 90 days, or forever)
+- **Show in menu** - How many items to display in the History submenu (5-100)
+
+**General**
 - **Launch at Login** - Start MindClip automatically when you log in
 
 ## Architecture

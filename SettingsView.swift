@@ -55,16 +55,25 @@ struct SettingsView: View {
             ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 12) {
 
-                // Session Duration card
+                // MARK: Picker (⌘V)
                 settingsCard {
                     VStack(alignment: .leading, spacing: 14) {
-                        cardHeader(icon: "timer", title: "Session Duration")
+                        cardHeader(icon: "rectangle.on.rectangle", title: "Picker")
 
-                        Text("Picker history clears after this time.")
+                        Text("Hold ⌘V to browse and paste from recent copies.")
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
 
-                        // Duration grid — 3 columns, equal width
+                        // Session duration
+                        HStack(spacing: 4) {
+                            Image(systemName: "timer")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                            Text("Auto-clear after")
+                                .font(.system(size: 11.5))
+                                .foregroundStyle(.secondary)
+                        }
+
                         let columns = [
                             GridItem(.flexible(), spacing: 6),
                             GridItem(.flexible(), spacing: 6),
@@ -76,22 +85,16 @@ struct SettingsView: View {
                             }
                         }
 
-                        // Custom stepper
                         if selectedDuration == .custom {
                             customStepper()
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
-                    }
-                }
 
-                // Clippings card
-                settingsCard {
-                    VStack(alignment: .leading, spacing: 14) {
-                        cardHeader(icon: "doc.plaintext", title: "Clippings")
+                        Divider().opacity(0.3)
 
-                        // Remember
+                        // Max items
                         HStack {
-                            Text("Remember")
+                            Text("Max items")
                                 .font(.system(size: 12))
                             Spacer()
                             stepperControl(
@@ -102,24 +105,6 @@ struct SettingsView: View {
                                 range: 5...200,
                                 step: 5,
                                 label: "\(manager.maxRemember)"
-                            )
-                        }
-
-                        Divider().opacity(0.3)
-
-                        // Display in menu
-                        HStack {
-                            Text("Display in menu")
-                                .font(.system(size: 12))
-                            Spacer()
-                            stepperControl(
-                                value: Binding(
-                                    get: { manager.displayInMenu },
-                                    set: { manager.displayInMenu = $0; manager.saveSettings() }
-                                ),
-                                range: 5...100,
-                                step: 5,
-                                label: "\(manager.displayInMenu)"
                             )
                         }
 
@@ -137,10 +122,112 @@ struct SettingsView: View {
                             .toggleStyle(.switch)
                             .controlSize(.small)
                         }
+
+                        Divider().opacity(0.3)
+
+                        // Current session info + clear
+                        HStack {
+                            Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s") in session")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button(action: { manager.clearAll() }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 10))
+                                    Text("Clear")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color.red.opacity(0.1))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
 
-                // General card
+                // MARK: Menu Bar History
+                settingsCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        cardHeader(icon: "clock.arrow.circlepath", title: "Menu Bar History")
+
+                        Text("Long-term history in the menu bar. Persists across sessions and restarts.")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+
+                        // Retention
+                        HStack {
+                            Text("Keep history for")
+                                .font(.system(size: 12))
+                            Spacer()
+                            Picker("", selection: Binding(
+                                get: { manager.menuBarRetention },
+                                set: {
+                                    manager.menuBarRetention = $0
+                                    manager.saveSettings()
+                                    manager.saveMenuBarHistory()
+                                }
+                            )) {
+                                ForEach(MenuBarRetention.allCases, id: \.self) { option in
+                                    Text(option.label).tag(option)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(width: 120)
+                        }
+
+                        Divider().opacity(0.3)
+
+                        // Show in menu
+                        HStack {
+                            Text("Show in menu")
+                                .font(.system(size: 12))
+                            Spacer()
+                            stepperControl(
+                                value: Binding(
+                                    get: { manager.displayInMenu },
+                                    set: { manager.displayInMenu = $0; manager.saveSettings() }
+                                ),
+                                range: 5...100,
+                                step: 5,
+                                label: "\(manager.displayInMenu)"
+                            )
+                        }
+
+                        Divider().opacity(0.3)
+
+                        // Stored items + clear
+                        HStack {
+                            Text("\(manager.menuBarHistory.count) item\(manager.menuBarHistory.count == 1 ? "" : "s") stored")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button(action: { manager.clearMenuBarHistory() }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 10))
+                                    Text("Clear")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color.red.opacity(0.1))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // MARK: General
                 settingsCard {
                     VStack(alignment: .leading, spacing: 14) {
                         cardHeader(icon: "gearshape", title: "General")
@@ -169,7 +256,7 @@ struct SettingsView: View {
                     }
                 }
 
-                // Keyboard Shortcuts card
+                // MARK: Shortcuts
                 settingsCard {
                     VStack(alignment: .leading, spacing: 12) {
                         cardHeader(icon: "keyboard", title: "Shortcuts")
@@ -183,98 +270,6 @@ struct SettingsView: View {
                             shortcutRow(icon: "arrow.up.arrow.down", text: "Navigate", shortcut: "↑↓")
                             shortcutRow(icon: "escape", text: "Dismiss", shortcut: "Esc")
                         }
-                    }
-                }
-
-                // Menu Bar History card
-                settingsCard {
-                    VStack(alignment: .leading, spacing: 14) {
-                        cardHeader(icon: "clock.arrow.circlepath", title: "Menu Bar History")
-
-                        Text("Persists across sessions and app restarts.")
-                            .font(.system(size: 11.5))
-                            .foregroundStyle(.secondary)
-
-                        HStack {
-                            Text("Keep history for")
-                                .font(.system(size: 12))
-                            Spacer()
-                            Picker("", selection: Binding(
-                                get: { manager.menuBarRetention },
-                                set: {
-                                    manager.menuBarRetention = $0
-                                    manager.saveSettings()
-                                    manager.saveMenuBarHistory()
-                                }
-                            )) {
-                                ForEach(MenuBarRetention.allCases, id: \.self) { option in
-                                    Text(option.label).tag(option)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .frame(width: 120)
-                        }
-
-                        Divider().opacity(0.3)
-
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Stored Items")
-                                    .font(.system(size: 12, weight: .medium))
-                                Text("\(manager.menuBarHistory.count) item\(manager.menuBarHistory.count == 1 ? "" : "s")")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Button(action: { manager.clearMenuBarHistory() }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "trash")
-                                        .font(.system(size: 10))
-                                    Text("Clear")
-                                        .font(.system(size: 11, weight: .medium))
-                                }
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color.red.opacity(0.1))
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                // Picker session card
-                settingsCard {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Picker Session")
-                                .font(.system(size: 12, weight: .medium))
-                            Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s")")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        Button(action: { manager.clearAll() }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 10))
-                                Text("Clear")
-                                    .font(.system(size: 11, weight: .medium))
-                            }
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Color.red.opacity(0.1))
-                            )
-                        }
-                        .buttonStyle(.plain)
                     }
                 }
             }
