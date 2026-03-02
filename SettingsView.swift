@@ -5,6 +5,7 @@ struct SettingsView: View {
     @ObservedObject private var manager = ClipboardManager.shared
     @State private var selectedDuration: DurationOption = .thirtyMinutes
     @State private var customMinutes: Int = 30
+    @State private var showClearHistoryConfirm = false
 
     enum DurationOption: CaseIterable {
         case fifteenMinutes, thirtyMinutes, oneHour, twoHours, untilQuit, custom
@@ -125,17 +126,14 @@ struct SettingsView: View {
 
                         Divider().opacity(0.3)
 
-                        // Current session info + clear
+                        // Clear session
                         HStack {
-                            Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s") in session")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
                             Spacer()
                             Button(action: { manager.clearAll() }) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "trash")
                                         .font(.system(size: 10))
-                                    Text("Clear")
+                                    Text("Clear Session")
                                         .font(.system(size: 11, weight: .medium))
                                 }
                                 .foregroundColor(.red)
@@ -201,17 +199,14 @@ struct SettingsView: View {
 
                         Divider().opacity(0.3)
 
-                        // Stored items + clear
+                        // Clear history
                         HStack {
-                            Text("\(manager.menuBarHistory.count) item\(manager.menuBarHistory.count == 1 ? "" : "s") stored")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
                             Spacer()
-                            Button(action: { manager.clearMenuBarHistory() }) {
+                            Button(action: { showClearHistoryConfirm = true }) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "trash")
                                         .font(.system(size: 10))
-                                    Text("Clear")
+                                    Text("Clear History")
                                         .font(.system(size: 11, weight: .medium))
                                 }
                                 .foregroundColor(.red)
@@ -223,6 +218,14 @@ struct SettingsView: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .alert("Clear Menu Bar History?", isPresented: $showClearHistoryConfirm) {
+                                Button("Cancel", role: .cancel) { }
+                                Button("Clear", role: .destructive) {
+                                    manager.clearMenuBarHistory()
+                                }
+                            } message: {
+                                Text("This will permanently delete all saved history. This cannot be undone.")
+                            }
                         }
                     }
                 }
@@ -355,7 +358,8 @@ struct SettingsView: View {
                     Image(systemName: "minus")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.primary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -370,7 +374,8 @@ struct SettingsView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.primary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -412,7 +417,8 @@ struct SettingsView: View {
                 Image(systemName: "minus")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .frame(width: 26, height: 26)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -427,7 +433,8 @@ struct SettingsView: View {
                 Image(systemName: "plus")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .frame(width: 26, height: 26)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
